@@ -1,6 +1,7 @@
 # Pairent 
 
 Pairent is a supportive mobile platform for parents. It helps users connect with other parents, track child development milestones, access parenting resources, and join forums based on child age/stage.
+This repository contains the **React Native (Expo)** frontend for the Pairent mobile app.
 
 ## Features (in progress)
 
