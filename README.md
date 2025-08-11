@@ -4,12 +4,12 @@ Pairent is a supportive mobile platform for parents. It helps users connect with
 
 ## Features (in progress)
 
-- Login and Registration Screens (UI only)
-- Forum Screens with dummy data
+- Login and Registration Screens
+- Forum Screens 
 - Milestone Tracker UI
-- Nappy & Food Timers (UI logic)
-- Chatbot Screen (UI placeholder)
-- Break Rooms (Voice Chat – not implemented yet)
+- Nappy & Food Timers 
+- Chatbot Screen 
+- Break Rooms 
 - Theming and Reusable Components
 
 ## Tech Stack
