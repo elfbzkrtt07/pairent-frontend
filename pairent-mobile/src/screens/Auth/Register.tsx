@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Register({ navigation }: any) {
-  const { signUp } = useAuth();
+  const { signUp, signIn } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -23,7 +23,8 @@ export default function Register({ navigation }: any) {
     setErr("");
     try {
       await signUp(email.trim(), pwd, name.trim(), dob.trim());
-      navigation.navigate("Login"); // redirect after successful signup
+      await signIn(email.trim(), pwd);
+      navigation.navigate("Home");
     } catch (e: any) {
       setErr(e.message ?? "Registration failed");
     }

@@ -1,3 +1,4 @@
+// src/navigation/RootNavigator.tsx
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import Login from "../screens/Auth/Login";
@@ -7,8 +8,10 @@ import Home from "../screens/Home/Home";
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
+  console.log("E: RootNavigator function body");
+
   return (
-    <NavigationContainer>
+    <NavigationContainer onReady={() => console.log("F: Navigation ready")}>
       <Stack.Navigator screenOptions={{ headerTitle: "" }}>
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="Register" component={Register} />

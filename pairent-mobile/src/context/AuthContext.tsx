@@ -1,13 +1,6 @@
+// src/context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
-import {
-  signUp,
-  confirmSignUp,
-  signIn,
-  signOut,
-  getCurrentUser,
-  fetchAuthSession,
-  fetchUserAttributes,
-} from "aws-amplify/auth";
+import { signUp, confirmSignUp, signIn, signOut, getCurrentUser, fetchUserAttributes } from "aws-amplify/auth";
 
 type User = { email: string; name?: string; birthdate?: string } | null;
 
@@ -23,81 +16,95 @@ type AuthCtx = {
 const AuthContext = createContext<AuthCtx | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  console.log("A0: AuthProvider mounted");
+
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log("A1: checking existing session…");
     (async () => {
       try {
         const current = await getCurrentUser();
+        console.log("A2: getCurrentUser OK:", current);
         const attrs = await fetchUserAttributes();
-        setUser({
-          email: attrs.email ?? "",
-          name: attrs.name ?? "",
-          birthdate: attrs.birthdate ?? "",
-        });
-        console.log("Restored session for:", attrs.email);
-      } catch {
+        console.log("A3: fetchUserAttributes OK:", attrs);
+        setUser({ email: attrs.email ?? "", name: attrs.name ?? "", birthdate: attrs.birthdate ?? "" });
+        console.log("A4: session restored for:", attrs.email);
+      } catch (err) {
+        console.log("A2x: no session / restore failed:", err);
         setUser(null);
       } finally {
         setLoading(false);
+        console.log("A5: session check done. loading=false");
       }
     })();
   }, []);
 
-  const signUpHandler = useCallback(
-    async (email: string, password: string, name: string, birthdate: string) => {
-      await signUp({
-        username: email,
-        password,
-        options: {
-          userAttributes: { email, name, birthdate },
-        },
-      });
-      console.log("SignUp success:", email);
-    },
-    []
-  );
+  const signUpHandler = useCallback(async (email: string, password: string, name: string, birthdate: string) => {
+    console.log("B1: signUp called", { email, name, birthdate });
+    try {
+      await signUp({ username: email, password, options: { userAttributes: { email, name, birthdate } } });
+      console.log("B2: signUp OK:", email);
+    } catch (e) {
+      console.error("B2x: signUp failed:", e);
+      throw e;
+    }
+  }, []);
 
   const confirmHandler = useCallback(async (email: string, code: string) => {
-    await confirmSignUp({ username: email, confirmationCode: code });
-    console.log("Confirmed:", email);
+    console.log("C1: confirmSignUp called", email);
+    try {
+      await confirmSignUp({ username: email, confirmationCode: code });
+      console.log("C2: confirmSignUp OK:", email);
+    } catch (e) {
+      console.error("C2x: confirmSignUp failed:", e);
+      throw e;
+    }
   }, []);
 
   const signInHandler = useCallback(async (email: string, password: string) => {
-    await signIn({ username: email, password });
-    const attrs = await fetchUserAttributes();
-    setUser({
-      email: attrs.email ?? "",
-      name: attrs.name ?? "",
-      birthdate: attrs.birthdate ?? "",
-    });
-    console.log("Signed in:", attrs.email);
+    console.log("D1: signIn called", email);
+    try {
+      await signIn({ username: email, password });
+      console.log("D2: signIn OK");
+      const attrs = await fetchUserAttributes();
+      console.log("D3: fetchUserAttributes after signIn:", attrs);
+      setUser({ email: attrs.email ?? "", name: attrs.name ?? "", birthdate: attrs.birthdate ?? "" });
+      console.log("D4: user set:", attrs.email);
+    } catch (e) {
+      console.error("D2x: signIn failed:", e);
+      throw e;
+    }
   }, []);
 
   const signOutHandler = useCallback(async () => {
-    await signOut();
-    setUser(null);
-    console.log("Signed out");
+    console.log("E1: signOut called");
+    try {
+      await signOut();
+      console.log("E2: signOut OK");
+    } catch (e) {
+      console.error("E2x: signOut failed:", e);
+    } finally {
+      setUser(null);
+      console.log("E3: user cleared");
+    }
   }, []);
 
-  const value = useMemo(
-    () => ({
-      user,
-      signUp: signUpHandler,
-      confirmSignUp: confirmHandler,
-      signIn: signInHandler,
-      signOut: signOutHandler,
-      loading,
-    }),
-    [user, signUpHandler, confirmHandler, signInHandler, signOutHandler, loading]
-  );
+  const value = useMemo(() => {
+    console.log("Z1: useMemo compute. user =", user, "loading =", loading);
+    return { user, signUp: signUpHandler, confirmSignUp: confirmHandler, signIn: signInHandler, signOut: signOutHandler, loading };
+  }, [user, signUpHandler, confirmHandler, signInHandler, signOutHandler, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) {
+    console.error("Zx: useAuth outside AuthProvider!");
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  console.log("Z2: useAuth consumed. user =", ctx.user);
   return ctx;
 }
