@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   View,
   Text,
@@ -6,129 +6,97 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { useAuth } from '../../context/AuthContext';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Register({ navigation }: any) {
   const { signUp } = useAuth();
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [pwd, setPwd] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [pwd, setPwd] = useState("");
+  const [dob, setDob] = useState("");
+  const [err, setErr] = useState("");
 
   const onSubmit = async () => {
-    setErr('');
-    if (pwd !== confirm) {
-      setErr('Passwords do not match');
-      return;
-    }
-    if (!name.trim()) {
-      setErr('Please enter your name');
-      return;
-    }
-    setBusy(true);
+    setErr("");
     try {
-      await signUp(email.trim(), pwd, name.trim());
+      await signUp(email.trim(), pwd, name.trim(), dob.trim());
+      navigation.navigate("Login"); // redirect after successful signup
     } catch (e: any) {
-      setErr(e.message ?? 'Registration failed');
-    } finally {
-      setBusy(false);
+      setErr(e.message ?? "Registration failed");
     }
   };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.select({ ios: 'padding' })}
+      behavior={Platform.select({ ios: "padding" })}
       style={{ flex: 1 }}
     >
-      <View style={{ flex: 1, padding: 20, gap: 12, justifyContent: 'center' }}>
-        <Text style={{ fontSize: 28, fontWeight: '700', textAlign: 'center' }}>
-          Create account
-        </Text>
-
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="Name"
-          autoCapitalize="words"
-          style={{
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-            backgroundColor: 'white',
-          }}
-        />
-
-        <TextInput
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          style={{
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-            backgroundColor: 'white',
-          }}
-        />
-
-        <TextInput
-          value={pwd}
-          onChangeText={setPwd}
-          placeholder="Password (min 8)"
-          secureTextEntry
-          style={{
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-            backgroundColor: 'white',
-          }}
-        />
-
-        <TextInput
-          value={confirm}
-          onChangeText={setConfirm}
-          placeholder="Confirm password"
-          secureTextEntry
-          style={{
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-            backgroundColor: '#fff',
-          }}
-        />
-
-        {err ? <Text style={{ color: 'crimson' }}>{err}</Text> : null}
-
-        <Pressable
-          onPress={onSubmit}
-          disabled={busy || !name || !email || !pwd || !confirm}
-          style={{
-            backgroundColor:
-              busy || !name || !email || !pwd || !confirm
-                ? '#94a3b8'
-                : '#111827',
-            padding: 14,
-            borderRadius: 12,
-            alignItems: 'center',
-            marginTop: 6,
-          }}
+      <SafeAreaView style={{ flex: 1 }}>
+        <View
+          style={{ flex: 1, padding: 20, gap: 12, justifyContent: "center" }}
         >
-          <Text style={{ color: 'white', fontWeight: '700' }}>
-            {busy ? 'Creating…' : 'Create account'}
+          <Text
+            style={{ fontSize: 28, fontWeight: "700", textAlign: "center" }}
+          >
+            Register
           </Text>
-        </Pressable>
 
-        <Pressable onPress={() => navigation.goBack()}>
-          <Text style={{ textAlign: 'center', marginTop: 10 }}>
-            Have an account? <Text style={{ fontWeight: '700' }}>Sign in</Text>
-          </Text>
-        </Pressable>
-      </View>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="Name"
+            style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+          />
+
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Email"
+            autoCapitalize="none"
+            style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+          />
+
+          <TextInput
+            value={pwd}
+            onChangeText={setPwd}
+            placeholder="Password"
+            secureTextEntry
+            style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+          />
+
+          <TextInput
+            value={dob}
+            onChangeText={setDob}
+            placeholder="Date of Birth (YYYY-MM-DD)"
+            style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+          />
+
+          {err ? <Text style={{ color: "crimson" }}>{err}</Text> : null}
+
+          <Pressable
+            onPress={onSubmit}
+            style={{
+              backgroundColor: "#111827",
+              padding: 14,
+              borderRadius: 12,
+              alignItems: "center",
+              marginTop: 10,
+            }}
+          >
+            <Text style={{ color: "white" }}>Create account</Text>
+          </Pressable>
+
+          <Pressable onPress={() => navigation.navigate("Login")}>
+            <Text style={{ textAlign: "center", marginTop: 20, paddingBottom: 20 }}>
+              Already have an account?{" "}
+              <Text style={{ color: "blue" }}>Login</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 }
