@@ -63,20 +63,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signInHandler = useCallback(async (email: string, password: string) => {
+    const signInHandler = useCallback(async (email: string, password: string) => {
     console.log("D1: signIn called", email);
     try {
-      await signIn({ username: email, password });
-      console.log("D2: signIn OK");
-      const attrs = await fetchUserAttributes();
-      console.log("D3: fetchUserAttributes after signIn:", attrs);
-      setUser({ email: attrs.email ?? "", name: attrs.name ?? "", birthdate: attrs.birthdate ?? "" });
-      console.log("D4: user set:", attrs.email);
-    } catch (e) {
-      console.error("D2x: signIn failed:", e);
-      throw e;
+        await signIn({ username: email, password });
+        console.log("D2: signIn OK");
+        const attrs = await fetchUserAttributes();
+        console.log("D3: fetchUserAttributes after signIn:", attrs);
+        setUser({ email: attrs.email ?? "", name: attrs.name ?? "", birthdate: attrs.birthdate ?? "" });
+        console.log("D4: user set:", attrs.email);
+    } catch (e: any) {
+        console.error("D2x: signIn failed:", e);
+        console.log("D2x: err.name:", e?.name);
+        console.log("D2x: err.message:", e?.message);
+        console.log("D2x: err.stack:", e?.stack);
+        throw e;
     }
-  }, []);
+    }, []);
 
   const signOutHandler = useCallback(async () => {
     console.log("E1: signOut called");
@@ -107,4 +110,16 @@ export function useAuth() {
   }
   console.log("Z2: useAuth consumed. user =", ctx.user);
   return ctx;
+}
+
+import { fetchAuthSession } from "aws-amplify/auth";
+
+export async function getIdToken(): Promise<string | null> {
+  try {
+    const session = await fetchAuthSession();
+    return session.tokens?.idToken?.toString() ?? null;
+  } catch (err) {
+    console.error("Failed to fetch ID token:", err);
+    return null;
+  }
 }

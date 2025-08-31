@@ -6,7 +6,7 @@ import { Amplify } from 'aws-amplify';
 import awsConfig from './src/config/aws-exports';
 
 console.log('K1: before config');
-Amplify.configure(awsConfig); // aws-exports should be v6-shaped: Auth -> Cognito -> userPoolId/userPoolClientId
+Amplify.configure(awsConfig); 
 console.log('K2: after config');
 
 export default function App() {
