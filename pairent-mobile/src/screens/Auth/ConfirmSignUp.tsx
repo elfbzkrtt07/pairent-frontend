@@ -13,25 +13,28 @@ import { resendSignUpCode } from "aws-amplify/auth";
 export default function ConfirmSignUp({ route, navigation }: any) {
   const { confirmSignUp, signIn } = useAuth();
   const [email, setEmail] = useState(route?.params?.email ?? "");
+  const [pwd, setPwd] = useState(route?.params?.pwd ?? ""); // 👈 prefill password if passed from Register
   const [code, setCode] = useState("");
-  // Optional: allow entering password here to auto-login after confirm
-  const [pwd, setPwd] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
   const onConfirm = async () => {
-    setErr(""); setMsg("");
+    setErr("");
+    setMsg("");
     try {
       await confirmSignUp(email.trim(), code.trim());
       setMsg("Account confirmed.");
 
       if (pwd) {
-        // Auto-login if user provided password
+        // If password is available, sign in automatically
         await signIn(email.trim(), pwd);
         navigation.reset({ index: 0, routes: [{ name: "Home" }] });
       } else {
-        // Otherwise send them to Login with email prefilled
-        navigation.replace("Login", { email: email.trim() });
+        // Otherwise, go to Login with email prefilled
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Login", params: { email: email.trim() } }],
+        });
       }
     } catch (e: any) {
       setErr(e.message ?? "Confirmation failed");
@@ -39,7 +42,8 @@ export default function ConfirmSignUp({ route, navigation }: any) {
   };
 
   const onResend = async () => {
-    setErr(""); setMsg("");
+    setErr("");
+    setMsg("");
     try {
       await resendSignUpCode({ username: email.trim() });
       setMsg("Verification code sent to your email.");
@@ -53,8 +57,21 @@ export default function ConfirmSignUp({ route, navigation }: any) {
       behavior={Platform.select({ ios: "padding" })}
       style={{ flex: 1 }}
     >
-      <View style={{ flex: 1, padding: 20, gap: 12, justifyContent: "center" }}>
-        <Text style={{ fontSize: 28, fontWeight: "700", textAlign: "center" }}>
+      <View
+        style={{
+          flex: 1,
+          padding: 20,
+          gap: 12,
+          justifyContent: "center",
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 28,
+            fontWeight: "700",
+            textAlign: "center",
+          }}
+        >
           Confirm your account
         </Text>
 
@@ -75,14 +92,6 @@ export default function ConfirmSignUp({ route, navigation }: any) {
           style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
         />
 
-        <TextInput
-          value={pwd}
-          onChangeText={setPwd}
-          placeholder="(Optional) Password to auto-login"
-          secureTextEntry
-          style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
-        />
-
         {err ? <Text style={{ color: "crimson" }}>{err}</Text> : null}
         {msg ? <Text style={{ color: "green" }}>{msg}</Text> : null}
 
@@ -99,7 +108,13 @@ export default function ConfirmSignUp({ route, navigation }: any) {
         </Pressable>
 
         <Pressable onPress={onResend}>
-          <Text style={{ textAlign: "center", marginTop: 12, color: "blue" }}>
+          <Text
+            style={{
+              textAlign: "center",
+              marginTop: 12,
+              color: "blue",
+            }}
+          >
             Resend verification code
           </Text>
         </Pressable>
