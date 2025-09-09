@@ -13,7 +13,7 @@ import { resendSignUpCode } from "aws-amplify/auth";
 export default function ConfirmSignUp({ route, navigation }: any) {
   const { confirmSignUp, signIn } = useAuth();
   const [email, setEmail] = useState(route?.params?.email ?? "");
-  const [pwd, setPwd] = useState(route?.params?.pwd ?? ""); // 👈 prefill password if passed from Register
+  const [pwd, setPwd] = useState(route?.params?.pwd ?? ""); 
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -26,11 +26,9 @@ export default function ConfirmSignUp({ route, navigation }: any) {
       setMsg("Account confirmed.");
 
       if (pwd) {
-        // If password is available, sign in automatically
         await signIn(email.trim(), pwd);
         navigation.reset({ index: 0, routes: [{ name: "Home" }] });
       } else {
-        // Otherwise, go to Login with email prefilled
         navigation.reset({
           index: 0,
           routes: [{ name: "Login", params: { email: email.trim() } }],

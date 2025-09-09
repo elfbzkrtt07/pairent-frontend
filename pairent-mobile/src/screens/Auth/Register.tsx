@@ -23,6 +23,7 @@ const toYMD = (d: Date) =>
 export default function Register({ navigation }: any) {
   const { signUp } = useAuth();
 
+  const [username, setUsername] = useState(""); // <-- Add this
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
@@ -56,7 +57,7 @@ export default function Register({ navigation }: any) {
   const onSubmit = async () => {
     setErr("");
     try {
-      await signUp(email.trim(), pwd, name.trim(), dobStr);
+      await signUp(email.trim(), pwd, name.trim(), dobStr, username.trim()); // <-- Pass username
       navigation.navigate("ConfirmSignUp", { email: email.trim() });
     } catch (e: any) {
       setErr(e?.message ?? "Registration failed");
@@ -123,11 +124,20 @@ export default function Register({ navigation }: any) {
               Register
             </Text>
 
-            <Text style={{ color: "#222", fontWeight: "500" }}>Nickname</Text>
+            <Text style={{ color: "#222", fontWeight: "500" }}>Name</Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="Enter your nickname"
+              placeholder="Enter your name"
+              style={[field]}
+            />
+
+            <Text style={{ color: "#222", fontWeight: "500" }}>Username</Text>
+            <TextInput
+              value={username}
+              onChangeText={setUsername}
+              placeholder="Enter your username"
+              autoCapitalize="none"
               style={[field]}
             />
 
@@ -159,7 +169,7 @@ export default function Register({ navigation }: any) {
                   borderColor: "#ccc",
                   borderRadius: 6,
                   backgroundColor: "#fff",
-                  height: 44,              // slightly shorter field
+                  height: 44,
                   justifyContent: "center",
                   paddingHorizontal: 8,
                 }}

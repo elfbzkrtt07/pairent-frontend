@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { signUp, confirmSignUp, signIn, signOut, getCurrentUser, fetchUserAttributes } from "aws-amplify/auth";
 
-type User = { email: string; name?: string; birthdate?: string } | null;
+type User = { email: string; name?: string; birthdate?: string; username: string } | null;
 
 type AuthCtx = {
   user: User;
-  signUp: (email: string, password: string, name: string, birthdate: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string, birthdate: string, username: string) => Promise<void>;
   confirmSignUp: (email: string, code: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -28,7 +28,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log("A2: getCurrentUser OK:", current);
         const attrs = await fetchUserAttributes();
         console.log("A3: fetchUserAttributes OK:", attrs);
-        setUser({ email: attrs.email ?? "", name: attrs.name ?? "", birthdate: attrs.birthdate ?? "" });
+        setUser({
+          email: attrs.email ?? "",
+          name: attrs.name ?? "",
+          birthdate: attrs.birthdate ?? "",
+          username: current.username // or attrs.preferred_username if you want
+        });
         console.log("A4: session restored for:", attrs.email);
       } catch (err) {
         console.log("A2x: no session / restore failed:", err);
@@ -40,16 +45,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const signUpHandler = useCallback(async (email: string, password: string, name: string, birthdate: string) => {
-    console.log("B1: signUp called", { email, name, birthdate });
-    try {
-      await signUp({ username: email, password, options: { userAttributes: { email, name, birthdate } } });
-      console.log("B2: signUp OK:", email);
-    } catch (e) {
-      console.error("B2x: signUp failed:", e);
-      throw e;
-    }
-  }, []);
+  const signUpHandler = useCallback(
+    async (email: string, password: string, name: string, birthdate: string, username: string) => {
+      console.log("B1: signUp called", { email, name, birthdate, username });
+      if (!username || username.length < 3) {
+        throw new Error("Username must be at least 3 characters and unique");
+      }
+      try {
+        await signUp({
+          username,
+          password,
+          options: { userAttributes: { email, name, birthdate, preferred_username: username } },
+        });
+        console.log("B2: signUp OK:", email);
+      } catch (e) {
+        console.error("B2x: signUp failed:", e);
+        if (name.length < 1) {
+          throw new Error("Nickname cannot be empty");
+        }
+        else if (email.length < 1) {
+          throw new Error("Email cannot be empty");
+        }
+        else if (password.length < 1) {
+          throw new Error("Password cannot be empty");
+        }
+        else if(email.includes('@') === false || email.includes('.') === false) {
+          throw new Error("Invalid email address");
+        }
+        else if (password.length < 8 || !/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
+          throw new Error("Password must be at least 8 characters long and include both letters and numbers");
+        } 
+        else throw new Error("Sign up failed");
+      }
+    },
+    []
+  );
 
   const confirmHandler = useCallback(async (email: string, code: string) => {
     console.log("C1: confirmSignUp called", email);
@@ -69,7 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log("D2: signIn OK");
         const attrs = await fetchUserAttributes();
         console.log("D3: fetchUserAttributes after signIn:", attrs);
-        setUser({ email: attrs.email ?? "", name: attrs.name ?? "", birthdate: attrs.birthdate ?? "" });
+        setUser({ 
+          email: attrs.email ?? "", 
+          name: attrs.name ?? "", 
+          birthdate: attrs.birthdate ?? "", 
+          username: attrs.preferred_username ?? attrs.email ?? "" 
+        });
         console.log("D4: user set:", attrs.email);
     } catch (e: any) {
         console.error("D2x: signIn failed:", e);
@@ -93,10 +128,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const value = useMemo(() => {
-    console.log("Z1: useMemo compute. user =", user, "loading =", loading);
-    return { user, signUp: signUpHandler, confirmSignUp: confirmHandler, signIn: signInHandler, signOut: signOutHandler, loading };
-  }, [user, signUpHandler, confirmHandler, signInHandler, signOutHandler, loading]);
+  const value = useMemo(() => ({
+    user,
+    signUp: signUpHandler,
+    confirmSignUp: confirmHandler,
+    signIn: signInHandler,
+    signOut: signOutHandler,
+    loading,
+  }), [user, signUpHandler, confirmHandler, signInHandler, signOutHandler, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
