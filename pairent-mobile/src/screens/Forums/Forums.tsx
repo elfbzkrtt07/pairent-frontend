@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   View, Text, ScrollView, Pressable, ActivityIndicator, useWindowDimensions,
 } from "react-native";
+import { fetchAuthSession } from "aws-amplify/auth";
 
 type Reply = {
   rid: string;
@@ -31,6 +32,7 @@ export default function Forums({ navigation }: any) {
   const [loading, setLoading] = useState(true);
 
   // mock data for now
+  /*
   useEffect(() => {
     const t = setTimeout(() => {
       setThreads([
@@ -38,7 +40,7 @@ export default function Forums({ navigation }: any) {
           qid: "q1",
           title: "My baby wakes up at night, how can I make him sleep better?",
           body:
-            "He keeps waking up every 2–3 hours. We tried white noise and feeding before bed. Any advice?",
+            "He keeps waking up every 2-3 hours. We tried white noise and feeding before bed. Any advice?",
           author_name: "janedoe_87",
           child_age_label: "2 yrs",
           likes: 120,
@@ -86,6 +88,46 @@ export default function Forums({ navigation }: any) {
       setLoading(false);
     }, 500);
     return () => clearTimeout(t);
+  }, []);
+  */
+  useEffect(() => {
+    const loadThreads = async () => {
+      try {
+        // 1. Get Cognito JWT token
+        const session = await fetchAuthSession();
+        const accessToken = session.tokens?.accessToken?.toString();
+
+        // 2. Call backend API
+        const res = await fetch("http://localhost:5000/questions", {
+          method: "GET",
+          headers: {
+            Authorization: accessToken ? `Bearer ${accessToken}` : "",
+          },
+          body: JSON.stringify({
+            limit: 10,
+            sort: "new"
+          })
+        });
+
+        if (!res.ok) {
+          console.error("❌ Failed to load questions", res.status);
+          setLoading(false);
+          return;
+        }
+
+        // 3. Parse response
+        const data = await res.json();
+        console.log("✅ Questions from API:", data);
+
+        setThreads(data.items || []); // depends on your backend’s JSON shape
+      } catch (err) {
+        console.error("❌ Network error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadThreads();
   }, []);
 
   return (
@@ -181,6 +223,7 @@ export default function Forums({ navigation }: any) {
                   </Text>
 
                   {/* Replies preview */}
+                  {/*
                   {t.replies_preview.map((r) => (
                     <View
                       key={r.rid}
@@ -208,6 +251,7 @@ export default function Forums({ navigation }: any) {
                       </Text>
                     </View>
                   ))}
+                  */}
 
                   {/* View all replies */}
                   <Pressable
