@@ -26,14 +26,20 @@ export default function NewQuestion({ navigation }: any) {
     try {
       // 1. Get Cognito JWT token
       const session = await fetchAuthSession();
-      const idToken = session.tokens?.accessToken?.toString();
+      const accessToken = session.tokens?.accessToken?.toString();
+
+      console.log("Access token:", accessToken);
+
+      if (!accessToken) {
+        throw new Error("No access token available!");
+      }
 
       // 2. Call backend
-      const res = await fetch("http://localhost:5000/questions", {
+      const res = await fetch("http://127.0.0.1:5000/questions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: idToken ? `Bearer ${idToken}` : "",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           title: title,

@@ -98,15 +98,11 @@ export default function Forums({ navigation }: any) {
         const accessToken = session.tokens?.accessToken?.toString();
 
         // 2. Call backend API
-        const res = await fetch("http://localhost:5000/questions", {
+        const res = await fetch("http://127.0.0.1:5000/questions?limit=10&sort=new", {
           method: "GET",
           headers: {
             Authorization: accessToken ? `Bearer ${accessToken}` : "",
-          },
-          body: JSON.stringify({
-            limit: 10,
-            sort: "new"
-          })
+          }
         });
 
         if (!res.ok) {
