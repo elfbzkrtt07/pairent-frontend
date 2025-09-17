@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import ForumCard, { ForumCardItem } from "../../components/ForumCard";
 import { Picker } from "@react-native-picker/picker";
+import { fetchAuthSession } from "aws-amplify/auth";
 
 type SortKey = "recent" | "popular" | "following";
 
@@ -26,7 +27,7 @@ export default function Home({ navigation }: any) {
   const [query, setQuery] = useState("");
 
   // Mock data
-  useEffect(() => {
+  /*useEffect(() => {
     const t = setTimeout(() => {
       setRows([
         {
@@ -59,7 +60,42 @@ export default function Home({ navigation }: any) {
       setLoading(false);
     }, 600);
     return () => clearTimeout(t);
-  }, []);
+  }, []);*/
+    useEffect(() => {
+    const loadQuestions = async () => {
+      try {
+        setLoading(true);
+
+        const session = await fetchAuthSession();
+        const accessToken = session.tokens?.accessToken?.toString();
+
+        const url = `http://localhost:5000/questions?limit=3&sort=${sort}`;
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: accessToken ? `Bearer ${accessToken}` : "",
+          },
+        });
+
+        if (!res.ok) {
+          console.error("Failed to load questions", res.status);
+          setLoading(false);
+          return;
+        }
+
+        const data = await res.json();
+        console.log("Questions from backend:", data);
+
+        setRows(data.items || []);
+      } catch (err) {
+        console.error("Network error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQuestions();
+  }, [sort]);
 
   // Apply sort + limit to 2 items for Home preview
   const visibleRows = useMemo(() => {
