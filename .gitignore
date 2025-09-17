@@ -35,6 +35,3 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
-
-# Backend Folder
-Pairent-Backend/
