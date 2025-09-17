@@ -106,18 +106,18 @@ export default function Forums({ navigation }: any) {
         });
 
         if (!res.ok) {
-          console.error("❌ Failed to load questions", res.status);
+          console.error("Failed to load questions", res.status);
           setLoading(false);
           return;
         }
 
         // 3. Parse response
         const data = await res.json();
-        console.log("✅ Questions from API:", data);
+        console.log("Questions from API:", data);
 
-        setThreads(data.items || []); // depends on your backend’s JSON shape
+        setThreads(data.items || []);
       } catch (err) {
-        console.error("❌ Network error:", err);
+        console.error("Network error:", err);
       } finally {
         setLoading(false);
       }
