@@ -1,39 +1,64 @@
 // src/screens/Profile/ProfilePublic.tsx
-import { View, Text, ScrollView, Pressable } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
+
+type Child = { id: string; name: string; age: number };
+type Question = { qid: string; title: string; child_age_label: string; reply_count: number; likes: number };
+type PublicUser = {
+  name: string;
+  username: string;
+  bio?: string;
+  children?: Child[];
+};
 
 export default function ProfilePublic({ route, navigation }: any) {
-  const { userId, username } = route.params || {};
-  const displayName = username?.replace(/[_]/g, " ") || "Emma Turner";
-  const handle = username || "emma_turner";
+  const { userId } = route.params || {};
+  const [profile, setProfile] = useState<PublicUser | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // mock data
-  const questions = [
-    {
-      qid: "q1",
-      title:
-        "My 2-year-old refuses to eat vegetables, what can I do to encourage healthy eating?",
-      age: "2 yrs",
-      replies: 20,
-      likes: 110,
-    },
-    {
-      qid: "q2",
-      title:
-        "How can I help my 5-year-old manage tantrums when it’s time to leave the playground?",
-      age: "5 yrs",
-      replies: 67,
-      likes: 198,
-    },
-  ];
-  const children = [
-    { id: "c1", nickname: "Nickname-1", age: "5" },
-    { id: "c2", nickname: "Nickname-2", age: "2" },
-  ];
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      try {
+        // 1. Fetch user public info
+        const userRes = await fetch(`http://localhost:5000/users/${userId}`);
+        // 2. Fetch their questions
+        const qRes = await fetch(`http://localhost:5000/questions/by-user/${userId}?limit=3&sort=popular`);
+
+        if (userRes.ok) setProfile(await userRes.json());
+        if (qRes.ok) {
+          const data = await qRes.json();
+          setQuestions(data.items || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch public profile", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <Text>User not found.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f9fafb" }}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-        {/* Left column-ish header */}
+        {/* Header */}
         <View
           style={{
             backgroundColor: "white",
@@ -54,30 +79,20 @@ export default function ProfilePublic({ route, navigation }: any) {
                 justifyContent: "center",
               }}
             >
-              <Text style={{ fontSize: 52 }}>👤</Text>
+              <Text style={{ fontSize: 52 }}>
+                {profile.name?.slice(0, 1).toUpperCase() ?? "?"}
+              </Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 24, fontWeight: "800" }}>
-                {displayName}
+                {profile.name}
               </Text>
-              <Text style={{ color: "#6b7280", marginBottom: 8 }}>@{handle}</Text>
+              <Text style={{ color: "#6b7280", marginBottom: 8 }}>
+                @{profile.username}
+              </Text>
               <Text style={{ color: "#374151" }}>
-                Single mom of 2, enjoys cooking and watching rom-coms
+                {profile.bio ?? "No bio yet"}
               </Text>
-              <Pressable
-                style={{
-                  alignSelf: "flex-start",
-                  marginTop: 12,
-                  backgroundColor: "#111827",
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                }}
-              >
-                <Text style={{ color: "white", fontWeight: "800" }}>
-                  Add Friend
-                </Text>
-              </Pressable>
             </View>
           </View>
         </View>
@@ -96,7 +111,7 @@ export default function ProfilePublic({ route, navigation }: any) {
             <Text style={{ fontSize: 20, fontWeight: "800" }}>Questions</Text>
             <Pressable
               style={{ marginLeft: "auto" }}
-              onPress={() => navigation.navigate("Home")}
+              onPress={() => navigation.navigate("UserQuestions", { userId })}
             >
               <Text style={{ color: "#4f46e5", fontWeight: "700" }}>
                 See more
@@ -104,38 +119,46 @@ export default function ProfilePublic({ route, navigation }: any) {
             </Pressable>
           </View>
 
-          {questions.map((q) => (
-            <Pressable
-              key={q.qid}
-              onPress={() =>
-                navigation.navigate("QuestionDetail", { qid: q.qid })
-              }
-              style={{
-                backgroundColor: "#f3f4f6",
-                borderRadius: 12,
-                padding: 12,
-                marginTop: 10,
-              }}
-            >
-              <Text style={{ fontWeight: "800", marginBottom: 6 }}>
-                {q.title}
-              </Text>
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                <View
-                  style={{
-                    backgroundColor: "#e5e7eb",
-                    borderRadius: 999,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>{q.age}</Text>
+          {questions.length > 0 ? (
+            questions.map((q) => (
+              <Pressable
+                key={q.qid}
+                onPress={() =>
+                  navigation.navigate("QuestionDetail", { qid: q.qid })
+                }
+                style={{
+                  backgroundColor: "#f3f4f6",
+                  borderRadius: 12,
+                  padding: 12,
+                  marginTop: 10,
+                }}
+              >
+                <Text style={{ fontWeight: "800", marginBottom: 6 }}>
+                  {q.title}
+                </Text>
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <View
+                    style={{
+                      backgroundColor: "#e5e7eb",
+                      borderRadius: 999,
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700" }}>
+                      {q.child_age_label}
+                    </Text>
+                  </View>
+                  <Text style={{ color: "#6b7280" }}>💬 {q.reply_count}</Text>
+                  <Text style={{ color: "#6b7280" }}>🤍 {q.likes}</Text>
                 </View>
-                <Text style={{ color: "#6b7280" }}>💬 {q.replies}</Text>
-                <Text style={{ color: "#6b7280" }}>🤍 {q.likes}</Text>
-              </View>
-            </Pressable>
-          ))}
+              </Pressable>
+            ))
+          ) : (
+            <Text style={{ marginTop: 8, color: "#6b7280" }}>
+              No questions yet.
+            </Text>
+          )}
         </View>
 
         {/* Children */}
@@ -152,35 +175,39 @@ export default function ProfilePublic({ route, navigation }: any) {
             Children
           </Text>
           <View style={{ flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
-            {children.map((c) => (
-              <View
-                key={c.id}
-                style={{
-                  width: 260,
-                  backgroundColor: "#f9fafb",
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: "#e5e7eb",
-                  padding: 12,
-                }}
-              >
+            {profile.children?.length ? (
+              profile.children.map((c) => (
                 <View
+                  key={c.id}
                   style={{
-                    width: 80,
-                    height: 80,
-                    borderRadius: 40,
-                    backgroundColor: "#e5e7eb",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 6,
+                    width: 260,
+                    backgroundColor: "#f9fafb",
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: "#e5e7eb",
+                    padding: 12,
                   }}
                 >
-                  <Text style={{ fontSize: 30 }}>👶</Text>
+                  <View
+                    style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: 40,
+                      backgroundColor: "#e5e7eb",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <Text style={{ fontSize: 30 }}>👶</Text>
+                  </View>
+                  <Text style={{ fontWeight: "800" }}>{c.name}</Text>
+                  <Text style={{ color: "#6b7280" }}>Age: {c.age}</Text>
                 </View>
-                <Text style={{ fontWeight: "800" }}>Nickname-{c.id === "c1" ? "1" : "2"}</Text>
-                <Text style={{ color: "#6b7280" }}>Age: {c.age}</Text>
-              </View>
-            ))}
+              ))
+            ) : (
+              <Text style={{ color: "#6b7280" }}>No children</Text>
+            )}
           </View>
         </View>
       </ScrollView>

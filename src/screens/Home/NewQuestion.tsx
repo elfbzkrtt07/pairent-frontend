@@ -80,12 +80,20 @@ export default function NewQuestion({ navigation }: any) {
         multiline
         style={{ backgroundColor: "white", borderRadius: 8, padding: 12, height: 120, textAlignVertical: "top" }}
       />
-      <Pressable
-        onPress={handleSubmit}
-        style={{ backgroundColor: "#2563eb", paddingVertical: 14, borderRadius: 8, alignItems: "center" }}
-      >
-        <Text style={{ color: "white", fontSize: 16, fontWeight: "600" }}>Submit Question</Text>
-      </Pressable>
+    <Pressable
+    onPress={handleSubmit}
+    style={{
+        backgroundColor: "#222",
+        paddingVertical: 14,
+        borderRadius: 8,
+        alignItems: "center",
+        marginTop: 20, // ✅ Added margin
+    }}
+    >
+    <Text style={{ color: "white", fontSize: 16, fontWeight: "600" }}>
+        Submit Question
+    </Text>
+    </Pressable>
     </View>
   );
 }

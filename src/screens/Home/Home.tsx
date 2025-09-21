@@ -13,7 +13,7 @@ import ForumCard, { ForumCardItem } from "../../components/ForumCard";
 import { Picker } from "@react-native-picker/picker";
 import { fetchAuthSession } from "aws-amplify/auth";
 
-type SortKey = "recent" | "popular" | "following";
+type SortKey = "recent" | "popular";
 
 export default function Home({ navigation }: any) {
   const { width } = useWindowDimensions();
@@ -69,7 +69,8 @@ export default function Home({ navigation }: any) {
         const session = await fetchAuthSession();
         const accessToken = session.tokens?.accessToken?.toString();
 
-        const url = `http://localhost:5000/questions?limit=3&sort=${sort}`;
+        const backendSort = sort === "recent" ? "new" : sort;
+        const url = `http://localhost:5000/questions?limit=3&sort=${backendSort}`;
         const res = await fetch(url, {
           method: "GET",
           headers: {
@@ -195,7 +196,6 @@ export default function Home({ navigation }: any) {
                 >
                   <Picker.Item label="Popular" value="popular" />
                   <Picker.Item label="Recent" value="recent" />
-                  <Picker.Item label="Following" value="following" />
                 </Picker>
               </View>
 

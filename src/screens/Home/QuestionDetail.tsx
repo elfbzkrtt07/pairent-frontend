@@ -16,7 +16,7 @@ import {
 } from "../../services/forum";
 import { useAuth } from "../../context/AuthContext";
 
-export default function QuestionDetailScreen({ route }: any) {
+export default function QuestionDetailScreen({ route, navigation }: any) {
   const { qid } = route.params as { qid: string };
   const { user } = useAuth();
 
@@ -36,6 +36,8 @@ export default function QuestionDetailScreen({ route }: any) {
   const ROOT = "__root__";
   const currentDisplayName =
     (user?.name as string) || (user?.username as string) || (user?.email as string) || "Anonymous parent";
+
+  const isOwner = !!q && q.name === currentDisplayName;
 
   // initial load
   useEffect(() => {
@@ -58,6 +60,18 @@ export default function QuestionDetailScreen({ route }: any) {
 
   const topLevelReplies = replyMap[ROOT] ?? [];
 
+  // 🔑 Save/Unsave toggle
+  const onToggleSaved = useCallback(async () => {
+    const next = !saved;
+    setSaved(next);
+    try {
+      if (next) await saveDiscussion(qid);
+      else await unsaveDiscussion(qid);
+    } catch (e) {
+      setSaved(!next); // revert on error
+    }
+  }, [saved, qid]);
+
   const handleToggleChildren = useCallback(async (parentRid: string) => {
     const isOpen = !!expanded[parentRid];
     if (isOpen) {
@@ -79,18 +93,6 @@ export default function QuestionDetailScreen({ route }: any) {
     const newCount = await likeQuestion(qid, next);
     setQ((prev) => (prev ? { ...prev, likes: newCount } : prev));
   }, [likedQuestion, qid]);
-
-  // save/unsave discussion
-  const onToggleSaved = useCallback(async () => {
-    const next = !saved;
-    setSaved(next);
-    try {
-      if (next) await saveDiscussion(qid);
-      else await unsaveDiscussion(qid);
-    } catch (e) {
-      setSaved(!next); // revert on error
-    }
-  }, [saved, qid]);
 
   const onToggleReplyLike = useCallback(async (rid: string) => {
     const next = !replyLiked[rid];
@@ -127,58 +129,49 @@ export default function QuestionDetailScreen({ route }: any) {
 
   // delete reply (only own replies)
   const onDeleteReply = useCallback(async (rid: string) => {
-  // Cross-platform confirm
-  let confirmed = true;
-  if (Platform.OS === "web") {
-    // @ts-ignore
-    confirmed = window.confirm?.("Delete this reply?") ?? true;
-  } else {
-    // RN native alert is async — wrap it
-    confirmed = await new Promise<boolean>((resolve) => {
-      Alert.alert("Delete reply", "Are you sure you want to delete this reply?", [
-        { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-        { text: "Delete", style: "destructive", onPress: () => resolve(true) },
-      ]);
-    });
-  }
-  if (!confirmed) return;
+    let confirmed = true;
+    if (Platform.OS === "web") {
+      // @ts-ignore
+      confirmed = window.confirm?.("Delete this reply?") ?? true;
+    } else {
+      confirmed = await new Promise<boolean>((resolve) => {
+        Alert.alert("Delete reply", "Are you sure you want to delete this reply?", [
+          { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+          { text: "Delete", style: "destructive", onPress: () => resolve(true) },
+        ]);
+      });
+    }
+    if (!confirmed) return;
 
-  try {
-    await deleteReply(rid);
-
-    // Build a set of rids to remove (rid + any loaded descendants)
-    setReplyMap((prev) => {
-      const toRemove = new Set<string>([rid]);
-
-      // keep scanning until no new descendants are found
-      let grew = true;
-      while (grew) {
-        grew = false;
-        for (const list of Object.values(prev)) {
-          for (const r of list) {
-            if (r.parentId && toRemove.has(r.parentId) && !toRemove.has(r.rid)) {
-              toRemove.add(r.rid);
-              grew = true;
+    try {
+      await deleteReply(rid);
+      setReplyMap((prev) => {
+        const toRemove = new Set<string>([rid]);
+        let grew = true;
+        while (grew) {
+          grew = false;
+          for (const list of Object.values(prev)) {
+            for (const r of list) {
+              if (r.parentId && toRemove.has(r.parentId) && !toRemove.has(r.rid)) {
+                toRemove.add(r.rid);
+                grew = true;
+              }
             }
           }
         }
+        const next: Record<string, ReplyT[]> = {};
+        for (const key of Object.keys(prev)) {
+          if (toRemove.has(key)) continue;
+          next[key] = prev[key].filter((r) => !toRemove.has(r.rid));
+        }
+        return next;
+      });
+    } catch (e) {
+      if (Platform.OS !== "web") {
+        Alert.alert("Error", "Could not delete reply.");
       }
-
-      // Rebuild replyMap without removed replies AND without buckets keyed by removed rids
-      const next: Record<string, ReplyT[]> = {};
-      for (const key of Object.keys(prev)) {
-        if (toRemove.has(key)) continue; // drop children bucket for a deleted node
-        next[key] = prev[key].filter((r) => !toRemove.has(r.rid));
-      }
-      return next;
-    });
-  } catch (e) {
-    // If needed, show a toast or alert here
-    if (Platform.OS !== "web") {
-      Alert.alert("Error", "Could not delete reply.");
     }
-  }
-}, []);
+  }, []);
 
   const renderReplyNode = useCallback((r: ReplyT, level: number) => {
     const children = replyMap[r.rid] ?? [];
@@ -210,7 +203,7 @@ export default function QuestionDetailScreen({ route }: any) {
 
           {isMe && (
             <Pressable onPress={() => onDeleteReply(r.rid)} style={{ marginLeft: 6 }}>
-              <Text style={{ fontSize: 14, color: "#b91c1c" /* red-700 */ }}>Delete</Text>
+              <Text style={{ fontSize: 14, color: "#b91c1c" }}>Delete</Text>
             </Pressable>
           )}
         </View>
@@ -272,6 +265,29 @@ export default function QuestionDetailScreen({ route }: any) {
         </View>
 
         <Text style={{ lineHeight: 22 }}>{q.body}</Text>
+
+        {/* Edit/Delete buttons only for owner */}
+        {isOwner && (
+          <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+            <Pressable onPress={() => navigation.navigate("EditQuestion", { qid: q.qid })}>
+              <Text style={{ color: "#2563eb" }}>Edit</Text>
+            </Pressable>
+            <Pressable
+              onPress={() =>
+                Alert.alert("Delete Question", "Are you sure?", [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: () => console.log("TODO: call DELETE /questions/" + q.qid),
+                  },
+                ])
+              }
+            >
+              <Text style={{ color: "#b91c1c" }}>Delete</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
       {/* Replies */}

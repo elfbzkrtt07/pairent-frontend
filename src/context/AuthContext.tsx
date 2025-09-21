@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: attrs.email ?? "",
           name: attrs.name ?? "",
           birthdate: attrs.birthdate ?? "",
-          username: current.username // or attrs.preferred_username if you want
+          username: current.username 
         });
         console.log("A4: session restored for:", attrs.email);
       } catch (err) {

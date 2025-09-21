@@ -15,7 +15,11 @@ import Timers from "../screens/Timers/Timers";
 import Milestones from "../screens/Milestones/Milestones";
 import Forums from "../screens/Forums/Forums";
 import ProfilePublic from "../screens/Profile/ProfilePublic";
-import SearchResults from "../screens/Home/SearchResults"; //  add this
+import SearchResults from "../screens/Home/SearchResults"; 
+import Bibi from "../screens/Bibi/Bibi";
+import Breakroom from "../screens/Breakrooms/Breakroom";
+import MyQuestions from "../screens/Profile/MyQuestions";
+import SavedForums from "../screens/Profile/SavedForums";
 
 import TopNav from "../components/TopNav";
 
@@ -71,6 +75,10 @@ export default function RootNavigator() {
           <Stack.Screen name="Milestones" component={Milestones} />
           <Stack.Screen name="Profile" component={Profile} />
           <Stack.Screen name="ProfilePublic" component={ProfilePublic} />
+          <Stack.Screen name="Bibi" component={Bibi} />
+          <Stack.Screen name="Breakroom" component={Breakroom} />
+          <Stack.Screen name="MyQuestions" component={MyQuestions} />
+          <Stack.Screen name="SavedForums" component={SavedForums} />
         </Stack.Navigator>
       ) : (
         <Stack.Navigator screenOptions={{ headerTitle: "" }}>

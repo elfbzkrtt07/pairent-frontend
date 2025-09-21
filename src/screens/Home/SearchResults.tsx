@@ -1,36 +1,43 @@
 import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, ScrollView } from "react-native";
 import ForumCard, { ForumCardItem } from "../../components/ForumCard";
+import { fetchAuthSession } from "aws-amplify/auth";
 
 export default function SearchResults({ route, navigation }: any) {
   const { q } = route.params as { q: string };
   const [items, setItems] = useState<ForumCardItem[] | null>(null);
 
   useEffect(() => {
-    // mock search: in real app call your API with q
-    const t = setTimeout(() => {
-      setItems([
-        {
-          qid: "1",
-          title: "My baby wakes up at night, how can I make him sleep better?",
-          author_name: "janedoe_87",
-          child_age: 2,
-          reply_count: 20,
-          likes: 120,
-        },
-        {
-          qid: "3",
-          title: "Potty training tips for a stubborn toddler?",
-          author_name: "maria88",
-          child_age: 13,
-          reply_count: 44,
-          likes: 80,
-        },
-      ]);
-    }, 500);
-    return () => clearTimeout(t);
+    const fetchSearchResults = async () => {
+      try {
+        setItems(null); 
+
+        const session = await fetchAuthSession();
+        const accessToken = session.tokens?.accessToken?.toString();
+
+        const res = await fetch(`http://localhost:5000/questions/search?q=${encodeURIComponent(q)}`, {
+          method: "GET",
+          headers: {
+            Authorization: accessToken ? `Bearer ${accessToken}` : "",
+          },
+        });
+
+        if (!res.ok) {
+          console.error("Failed to fetch search results:", res.status);
+          return;
+        }
+
+        const data = await res.json();
+        setItems(data.items || []);
+      } catch (err) {
+        console.error("Search error:", err);
+      }
+    };
+
+    fetchSearchResults();
   }, [q]);
 
+  // ✅ Add the missing return statement
   if (!items) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -56,3 +63,4 @@ export default function SearchResults({ route, navigation }: any) {
     </ScrollView>
   );
 }
+
