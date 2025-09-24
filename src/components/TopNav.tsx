@@ -1,6 +1,7 @@
 // src/components/TopNav.tsx
 import { View, Text, Pressable } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import colors from "../styles/colors";
 
 type ActiveTab = "home" | "forums" | "timers" | "milestones" | "profile" | undefined;
 
@@ -23,7 +24,7 @@ export default function TopNav({
         style={{
           fontSize: 16,
           fontWeight: activeTab === keyName ? "700" : "400",
-          color: activeTab === keyName ? "#111827" : "#6b7280",
+          color: activeTab === keyName ? colors.aqua.text : colors.aqua.dark,
         }}
       >
         {label}
@@ -58,7 +59,7 @@ export default function TopNav({
 
       {/* Profile button */}
       <Pressable
-        onPress={() => navigation.navigate("Profile")} // change to "ProfileSelf" after implementing that screen
+        onPress={() => navigation.navigate("Profile")} 
         hitSlop={8}
         style={{
           width: 32, height: 32, borderRadius: 16,

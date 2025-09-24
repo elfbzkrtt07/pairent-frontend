@@ -1,4 +1,3 @@
-// Login.tsx
 import { useState } from "react";
 import {
   View,
@@ -12,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
+import colors from "../../styles/colors";  
 
 export default function Login({ navigation }: any) {
   const { signIn } = useAuth();
@@ -32,17 +32,17 @@ export default function Login({ navigation }: any) {
 
   const field = {
     borderWidth: 1 as const,
-    borderColor: "#ccc",
+    borderColor: colors.base.border,
     padding: 12,
     borderRadius: 6,
-    backgroundColor: "#fff",
-    color: "#222",
+    backgroundColor: colors.base.background,
+    color: colors.base.text,
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: "#f5f5f5" }}
+      style={{ flex: 1, backgroundColor: colors.aqua.light }}
     >
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView
@@ -61,10 +61,10 @@ export default function Login({ navigation }: any) {
               width: "100%",
               maxWidth: 520,
               borderWidth: 1,
-              borderColor: "#ddd",
+              borderColor: colors.base.border,
               borderRadius: 12,
               padding: 20,
-              backgroundColor: "#fff",
+              backgroundColor: colors.base.background,
               gap: 12,
               shadowColor: "#000",
               shadowOpacity: 0.05,
@@ -90,12 +90,13 @@ export default function Login({ navigation }: any) {
                 fontWeight: "700",
                 textAlign: "center",
                 marginBottom: 8,
+                color: colors.base.text,
               }}
             >
               Login
             </Text>
 
-            <Text style={{ color: "#222", fontWeight: "500" }}>Email</Text>
+            <Text style={{ color: colors.base.text, fontWeight: "500" }}>Email</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -104,7 +105,7 @@ export default function Login({ navigation }: any) {
               style={[field]}
             />
 
-            <Text style={{ color: "#222", fontWeight: "500" }}>Password</Text>
+            <Text style={{ color: colors.base.text, fontWeight: "500" }}>Password</Text>
             <TextInput
               value={pwd}
               onChangeText={setPwd}
@@ -113,27 +114,32 @@ export default function Login({ navigation }: any) {
               style={[field]}
             />
 
-            {err ? <Text style={{ color: "crimson", marginTop: 4 }}>{err}</Text> : null}
+            {err ? (
+              <Text style={{ color: "crimson", marginTop: 4 }}>{err}</Text>
+            ) : null}
 
             <Pressable
               onPress={onSubmit}
               style={{
-                backgroundColor: "#222",
+                backgroundColor: colors.peach.dark,
                 paddingVertical: 12,
                 borderRadius: 8,
                 alignItems: "center",
                 marginTop: 8,
               }}
             >
-              <Text style={{ color: "white", fontWeight: "600" }}>Login</Text>
+              <Text style={{ color: colors.base.background, fontWeight: "600" }}>
+                Login
+              </Text>
             </Pressable>
           </View>
 
           <View style={{ height: 16 }} />
 
           <Pressable onPress={() => navigation.navigate("Register")}>
-            <Text style={{ textAlign: "center", color: "#222" }}>
-              Don’t have an account? <Text style={{ color: "blue" }}>Register</Text>
+            <Text style={{ textAlign: "center", color: colors.base.text }}>
+              Don’t have an account?{" "}
+              <Text style={{ color: colors.aqua.dark }}>Register</Text>
             </Text>
           </Pressable>
         </ScrollView>

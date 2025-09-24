@@ -9,59 +9,34 @@ import {
   useWindowDimensions,
   TextInput,
 } from "react-native";
-import ForumCard, { ForumCardItem } from "../../components/ForumCard";
 import { Picker } from "@react-native-picker/picker";
 import { fetchAuthSession } from "aws-amplify/auth";
+import colors from "../../styles/colors";
 
 type SortKey = "recent" | "popular";
 
+type Question = {
+  qid: string;
+  title: string;
+  body: string;
+  author_name: string;
+  child_age_label: string;
+  likes: number;
+  reply_count: number;
+};
+
 export default function Home({ navigation }: any) {
   const { width } = useWindowDimensions();
-  const isWide = width >= 900; // breakpoint for 2 columns
+  const isWide = width >= 1000;
 
-  const [rows, setRows] = useState<ForumCardItem[] | null>(null);
+  const [rows, setRows] = useState<Question[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortKey>("popular");
-
-  // NEW: search query
   const [query, setQuery] = useState("");
+  const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
 
-  // Mock data
-  /*useEffect(() => {
-    const t = setTimeout(() => {
-      setRows([
-        {
-          qid: "1",
-          title: "My baby wakes up at night, how can I make him sleep better?",
-          author_name: "janedoe_87",
-          child_age: 2,
-          reply_count: 20,
-          likes: 120,
-        },
-        {
-          qid: "2",
-          title: "What are these spots on my daughters arms",
-          author_name: "karensmithh",
-          child_age: 13,
-          reply_count: 23,
-          likes: 102,
-          created_at: "20240620123149",
-        },
-        {
-          qid: "3",
-          title: "Potty training tips for a stubborn toddler?",
-          author_name: "maria88",
-          child_age: 13,
-          reply_count: 44,
-          likes: 80,
-          created_at: "20240621182923",
-        },
-      ]);
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(t);
-  }, []);*/
-    useEffect(() => {
+  // Fetch questions from backend
+  useEffect(() => {
     const loadQuestions = async () => {
       try {
         setLoading(true);
@@ -73,23 +48,20 @@ export default function Home({ navigation }: any) {
         const url = `http://localhost:5000/questions?limit=3&sort=${backendSort}`;
         const res = await fetch(url, {
           method: "GET",
-          headers: {
-            Authorization: accessToken ? `Bearer ${accessToken}` : "",
-          },
+          headers: { Authorization: accessToken ? `Bearer ${accessToken}` : "" },
         });
 
         if (!res.ok) {
           console.error("Failed to load questions", res.status);
-          setLoading(false);
+          setRows([]);
           return;
         }
 
         const data = await res.json();
-        console.log("Questions from backend:", data);
-
         setRows(data.items || []);
       } catch (err) {
         console.error("Network error:", err);
+        setRows([]);
       } finally {
         setLoading(false);
       }
@@ -98,33 +70,48 @@ export default function Home({ navigation }: any) {
     loadQuestions();
   }, [sort]);
 
-  // Apply sort + limit to 2 items for Home preview
+  // Only show 2 items on home preview
   const visibleRows = useMemo(() => {
-    if (!rows) return rows;
+    if (!rows) return null;
     return rows.slice(0, 2);
-  }, [rows, sort]);
+  }, [rows]);
 
-  // NEW: go to search results
+  const toggleLike = (qid: string) => {
+    setRows((prev) =>
+      prev
+        ? prev.map((q) =>
+            q.qid === qid
+              ? { ...q, likes: likedMap[qid] ? q.likes - 1 : q.likes + 1 }
+              : q
+          )
+        : prev
+    );
+    setLikedMap((prev) => ({ ...prev, [qid]: !prev[qid] }));
+  };
+
   const goSearch = () => {
     const q = query.trim();
     if (!q) return;
-    // Change "SearchResults" to your route name if different
     navigation.navigate("SearchResults", { q });
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f9fafb" }}>
+    
+    <View style={{ flex: 1, backgroundColor: colors.base.background }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <View
           style={{
             flexDirection: isWide ? "row" : "column",
-            alignItems: "flex-start",
             gap: 16,
+            alignItems: "flex-start",
+            maxWidth: 1200,
+            alignSelf: "center",
+            width: "100%",
           }}
         >
-          {/* LEFT COLUMN */}
+          {/* LEFT column */}
           <View style={{ flex: 1 }}>
-            {/* NEW: Search bar */}
+            {/* Search bar */}
             <View
               style={{
                 flexDirection: "row",
@@ -144,7 +131,7 @@ export default function Home({ navigation }: any) {
                   backgroundColor: "#fff",
                   borderRadius: 999,
                   borderWidth: 1,
-                  borderColor: "#e5e7eb",
+                  borderColor: colors.base.border,
                   paddingHorizontal: 16,
                   height: 40,
                 }}
@@ -155,32 +142,34 @@ export default function Home({ navigation }: any) {
                   height: 40,
                   paddingHorizontal: 16,
                   borderRadius: 999,
-                  backgroundColor: "#d1d5db",
+                  backgroundColor: colors.aqua.normal,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ fontWeight: "700" }}>SEARCH</Text>
+                
+                <Text style={{ fontWeight: "700", color: colors.aqua.text }}>
+                  SEARCH
+                </Text>
               </Pressable>
             </View>
 
-            {/* Forums header row */}
+            {/* Header row */}
             <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginBottom: 12,
-              }}
+              style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
             >
-              <Text style={{ fontSize: 22, fontWeight: "800" }}>FORUMS</Text>
+              <Text
+                style={{ fontSize: 24, fontWeight: "800", color: colors.aqua.text }}
+              >
+                HOME FEED
+              </Text>
 
-              {/* Sort dropdown */}
               <View
                 style={{
                   marginLeft: 12,
                   borderRadius: 6,
                   borderWidth: 1,
-                  borderColor: "#e5e7eb",
+                  borderColor: colors.base.border,
                   backgroundColor: "#fff",
                   paddingHorizontal: 4,
                   minWidth: 140,
@@ -191,15 +180,14 @@ export default function Home({ navigation }: any) {
                 <Picker
                   selectedValue={sort}
                   onValueChange={(v) => setSort(v as SortKey)}
-                  style={{ height: 36, color: "#222" }}
-                  dropdownIconColor="#222"
+                  style={{ height: 36, color: colors.base.text }}
+                  dropdownIconColor={colors.base.text}
                 >
                   <Picker.Item label="Popular" value="popular" />
                   <Picker.Item label="Recent" value="recent" />
                 </Picker>
               </View>
 
-              {/* + button */}
               <Pressable
                 onPress={() => navigation.navigate("NewQuestion")}
                 style={{
@@ -207,12 +195,12 @@ export default function Home({ navigation }: any) {
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: "#111827",
+                  backgroundColor: colors.aqua.normal,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ color: "white", fontSize: 22, marginTop: -2 }}>
+                <Text style={{ color: colors.aqua.text, fontSize: 22, marginTop: -2 }}>
                   ＋
                 </Text>
               </Pressable>
@@ -225,27 +213,139 @@ export default function Home({ navigation }: any) {
             )}
 
             {visibleRows?.map((q) => (
-              <ForumCard
+              <View
                 key={q.qid}
-                item={q}
-                onPress={() =>
-                  navigation.navigate("QuestionDetail", { qid: q.qid })
-                }
-                onReplyPress={() =>
-                  navigation.navigate("QuestionDetail", { qid: q.qid })
-                }
-              />
+                style={{
+                  backgroundColor: colors.aqua.light,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.base.border,
+                  padding: 16,
+                  marginBottom: 16,
+                }}
+              >
+                {/* Question title */}
+                <Pressable
+                  onPress={() =>
+                    navigation.navigate("QuestionDetail", { qid: q.qid })
+                  }
+                >
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontWeight: "800",
+                      marginBottom: 10,
+                      color: colors.base.text,
+                    }}
+                  >
+                    {q.title}
+                  </Text>
+                </Pressable>
+
+                {/* Author row */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Pressable
+                    onPress={() =>
+                      navigation.navigate("ProfilePublic", { username: q.author_name })
+                    }
+                  >
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: colors.aqua.light,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text>👤</Text>
+                    </View>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() =>
+                      navigation.navigate("ProfilePublic", { username: q.author_name })
+                    }
+                  >
+                    <Text
+                      style={{
+                        fontWeight: "700",
+                        color: colors.aqua.text,
+                        textDecorationLine: "underline",
+                      }}
+                    >
+                      {q.author_name}
+                    </Text>
+                  </Pressable>
+
+                  <View
+                    style={{
+                      backgroundColor: colors.aqua.light,
+                      borderRadius: 999,
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      marginLeft: 6,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", color: colors.aqua.text }}>
+                      {q.child_age_label}
+                    </Text>
+                  </View>
+
+                  <View style={{ marginLeft: "auto", flexDirection: "row", gap: 16 }}>
+                    <Text style={{ color: colors.base.text }}>
+                      💬 {q.reply_count}
+                    </Text>
+                    <Pressable
+                      onPress={() => toggleLike(q.qid)}
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <Text style={{ fontSize: 16 }}>
+                        {likedMap[q.qid] ? "❤️" : "🤍"}
+                      </Text>
+                      <Text style={{ fontSize: 16, marginLeft: 6 }}>{q.likes}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                {/* Body */}
+                <Text
+                  style={{ marginTop: 10, lineHeight: 20, color: colors.base.text }}
+                >
+                  {q.body}
+                </Text>
+
+                {/* Replies button */}
+                <Pressable
+                  onPress={() =>
+                    navigation.navigate("QuestionDetail", { qid: q.qid })
+                  }
+                  style={{
+                    marginTop: 14,
+                    alignSelf: "flex-start",
+                    backgroundColor: colors.aqua.normal,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text style={{ color: colors.aqua.text, fontWeight: "800" }}>
+                    View all replies
+                  </Text>
+                </Pressable>
+              </View>
             ))}
 
-            {/* Random daily AI tips */}
+            {/* Random daily AI tips card */}
             <View
               style={{
                 marginTop: 16,
-                backgroundColor: "white",
+                backgroundColor: colors.peach.light,
                 borderRadius: 12,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: "#e5e7eb",
+                borderColor: colors.base.border,
               }}
             >
               <View
@@ -257,47 +357,54 @@ export default function Home({ navigation }: any) {
                 }}
               >
                 <Text style={{ fontSize: 22 }}>💡</Text>
-                <Text style={{ fontSize: 18, fontWeight: "800" }}>
+                <Text
+                  style={{ fontSize: 18, fontWeight: "800", color: colors.peach.text }}
+                >
                   RANDOM DAILY AI TIPS
                 </Text>
               </View>
-              <Text style={{ fontSize: 15, lineHeight: 22, marginBottom: 10 }}>
-                “Children copy behaviours more than they follow instructions.
-                Show patience, kindness, and curiosity in everyday life.”
+              <Text
+                style={{
+                  fontSize: 15,
+                  lineHeight: 22,
+                  marginBottom: 10,
+                  color: colors.peach.subtext,
+                }}
+              >
+                “Children copy behaviours more than they follow instructions. Show
+                patience, kindness, and curiosity in everyday life.”
               </Text>
               <Pressable
                 onPress={() => navigation.navigate("Bibi")}
                 style={{
                   alignSelf: "flex-start",
-                  backgroundColor: "#111827",
+                  backgroundColor: colors.peach.dark,
                   paddingHorizontal: 14,
                   paddingVertical: 10,
                   borderRadius: 8,
                 }}
               >
-                <Text style={{ color: "white", fontWeight: "700" }}>
-                  Ask Bibi
-                </Text>
+                <Text style={{ color: "white", fontWeight: "700" }}>Ask Bibi</Text>
               </Pressable>
             </View>
           </View>
 
-          {/* RIGHT COLUMN */}
+          {/* RIGHT column */}
           <View style={{ width: isWide ? 280 : "100%", gap: 12 }}>
             <View
               style={{
-                backgroundColor: "white",
+                backgroundColor: colors.peach.light,
                 borderRadius: 12,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: "#e5e7eb",
+                borderColor: colors.base.border,
               }}
             >
               <Text
                 style={{
                   fontSize: 16,
                   fontWeight: "800",
-                  marginBottom: 12,
+                  color: colors.peach.text,
                 }}
               >
                 ACTIVE BREAKROOMS
@@ -307,36 +414,28 @@ export default function Home({ navigation }: any) {
                 { id: "r1", title: "Reading alone", activity: "4/10" },
                 { id: "r2", title: "Coping with work", activity: "7/10" },
                 { id: "r3", title: "Random Chat", activity: "8/10" },
-                { id: "r4", title: "Single moms club", activity: "4/10" },
-                { id: "r5", title: "...", activity: "2/10" },
               ].map((r) => (
                 <View
                   key={r.id}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    marginBottom: 10,
-                  }}
+                  style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "600" }}>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: colors.base.text }}>
                       {r.title}
                     </Text>
-                    <Text style={{ fontSize: 13, color: "#6b7280" }}>
+                    <Text style={{ fontSize: 13, color: colors.peach.subtext }}>
                       {r.activity}
                     </Text>
                   </View>
                   <Pressable
                     style={{
-                      backgroundColor: "#111827",
+                      backgroundColor: colors.peach.dark,
                       borderRadius: 999,
                       paddingHorizontal: 16,
                       paddingVertical: 6,
                     }}
                   >
-                    <Text style={{ color: "white", fontWeight: "700" }}>
-                      join
-                    </Text>
+                    <Text style={{ color: "white", fontWeight: "700" }}>Join</Text>
                   </Pressable>
                 </View>
               ))}
@@ -346,15 +445,13 @@ export default function Home({ navigation }: any) {
                 style={{
                   marginTop: 8,
                   alignSelf: "flex-start",
-                  backgroundColor: "#4f46e5",
+                  backgroundColor: colors.peach.dark,
                   paddingHorizontal: 14,
                   paddingVertical: 10,
                   borderRadius: 8,
                 }}
               >
-                <Text style={{ color: "white", fontWeight: "700" }}>
-                  Ask Bibi
-                </Text>
+                <Text style={{ color: "white", fontWeight: "700" }}>Ask Bibi</Text>
               </Pressable>
             </View>
           </View>

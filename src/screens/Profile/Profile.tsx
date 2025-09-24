@@ -1,5 +1,5 @@
 // src/screens/Profile/Profile.tsx
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,18 +7,33 @@ import {
   ScrollView,
   ActivityIndicator,
   useWindowDimensions,
+  TextInput,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { useAuth } from "../../context/AuthContext";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { fetchAuthSession, updatePassword } from "aws-amplify/auth";
+import colors from "../../styles/colors";
+import { ExtendedUser, getMyProfile, updateMyProfile } from "../../services/profile";
 
-type Child = { name: string; age: number };
 type Question = { qid: string; title: string; reply_count: number; likes: number };
-type ExtendedUser = {
-  bio?: string;
-  children?: Child[];
-  privacy?: Record<string, "public" | "private">;
-};
+
+const Card = ({ children, style }: { children: React.ReactNode; style?: object }) => (
+  <View
+    style={[
+      {
+        backgroundColor: colors.base.background,
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: colors.base.border,
+        flex: 1,
+      },
+      style,
+    ]}
+  >
+    {children}
+  </View>
+);
 
 export default function Profile({ navigation }: any) {
   const { width } = useWindowDimensions();
@@ -29,23 +44,35 @@ export default function Profile({ navigation }: any) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Edit state
+  const [editing, setEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [emailDraft, setEmailDraft] = useState("");
+  const [dobDraft, setDobDraft] = useState("");
+  const [bioDraft, setBioDraft] = useState("");
+
+  // Password change
+  const [oldPass, setOldPass] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [savingPass, setSavingPass] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     (async () => {
       try {
+        const profile = await getMyProfile();
+        setExtended(profile);
+        setNameDraft(profile.name ?? user.name ?? "");
+        setEmailDraft(profile.email ?? user.email ?? "");
+        setDobDraft(profile.dob ?? "");
+        setBioDraft(profile.bio ?? "");
+
         const session = await fetchAuthSession();
         const accessToken = session.tokens?.accessToken?.toString();
 
-        const [profileRes, qRes] = await Promise.all([
-          fetch("http://localhost:5000/users/me", {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }),
-          fetch("http://localhost:5000/questions/me?limit=5&sort=recent", {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }),
-        ]);
-
-        if (profileRes.ok) setExtended(await profileRes.json());
+        const qRes = await fetch("http://localhost:5000/questions/me?limit=5&sort=recent", {
+          headers: { Authorization: accessToken ? `Bearer ${accessToken}` : "" },
+        });
         if (qRes.ok) {
           const data = await qRes.json();
           setQuestions(data.items || []);
@@ -58,6 +85,36 @@ export default function Profile({ navigation }: any) {
     })();
   }, [user]);
 
+  const handleSaveProfile = async () => {
+    try {
+      if (!extended) return;
+      const updated = await updateMyProfile({
+        name: nameDraft,
+        email: emailDraft,
+        dob: dobDraft,
+        bio: bioDraft,
+      });
+      setExtended(updated);
+      setEditing(false);
+    } catch (e) {
+      console.error("Failed to save profile:", e);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    try {
+      setSavingPass(true);
+      await updatePassword({ oldPassword: oldPass, newPassword: newPass });
+      alert("Password updated successfully");
+      setOldPass("");
+      setNewPass("");
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setSavingPass(false);
+    }
+  };
+
   if (!user) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -69,235 +126,368 @@ export default function Profile({ navigation }: any) {
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.aqua.dark} />
       </View>
     );
   }
-
-  const Card = ({ children, style }: { children: React.ReactNode; style?: object }) => (
-    <View
-      style={[
-        {
-          backgroundColor: "white",
-          borderRadius: 12,
-          padding: 16,
-          borderWidth: 1,
-          borderColor: "#e5e5e5",
-          flex: 1,
-        },
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
 
   return (
     <ScrollView
       contentContainerStyle={{
         flexGrow: 1,
         padding: 16,
-        backgroundColor: "#f3f4f6",
+        backgroundColor: colors.base.background,
         gap: 16,
       }}
     >
       {/* Header row */}
-<Card
-  style={{
-    flexDirection: isWide ? "row" : "column",
-    alignItems: isWide ? "flex-start" : "center",
-    gap: 24,
-    padding: 24,        // more padding
-    minHeight: 250,     // makes it slightly bigger
-  }}
->
-  {/* Left column: Avatar + name */}
-  <View style={{ alignItems: isWide ? "center" : "flex-start", width: 220 }}>
-    <View
-      style={{
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: "#e5e7eb",
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 8,
-      }}
-    >
-      <Text style={{ fontSize: 40, fontWeight: "800", color: "#111827" }}>
-        {user.name?.slice(0, 1).toUpperCase() ??
-          user.email?.slice(0, 1).toUpperCase() ??
-          "?"}
-      </Text>
-    </View>
-    <Text style={{ fontSize: 18, fontWeight: "700" }}>
-      {user.name ?? "Unnamed"}
-    </Text>
-    <Text style={{ color: "#6b7280", fontSize: 13, marginBottom: 8 }}>
-      {user.email}
-    </Text>
-
-    {/* Buttons inside same card */}
-    <View style={{ flexDirection: "row", gap: 10 }}>
-      <Pressable
-        onPress={() => navigation.navigate("EditProfile")}
-        style={{
-          backgroundColor: "#111827",
-          paddingVertical: 6,
-          paddingHorizontal: 14,
-          borderRadius: 6,
-        }}
-      >
-        <Text style={{ color: "white", fontWeight: "700" }}>Edit</Text>
-      </Pressable>
-      <Pressable
-        onPress={async () => {
-          await signOut();
-          navigation.reset({ index: 0, routes: [{ name: "Login" }] });
-        }}
-        style={{
-          backgroundColor: "crimson",
-          paddingVertical: 6,
-          paddingHorizontal: 14,
-          borderRadius: 6,
-        }}
-      >
-        <Text style={{ color: "white", fontWeight: "700" }}>Sign out</Text>
-      </Pressable>
-    </View>
-  </View>
-
-  {/* Right column: Profile info */}
-  <View style={{ flex: 1, justifyContent: "center" }}>
-    <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>
-      Profile Information
-    </Text>
-    <Text style={{ marginBottom: 4 }}>Name: {user.name ?? "—"}</Text>
-    <Text style={{ marginBottom: 4 }}>Email: {user.email}</Text>
-    <Text style={{ marginBottom: 4 }}>
-      Birthdate: {user.birthdate ?? "—"}
-    </Text>
-    <Text>Bio: {extended?.bio ?? "—"}</Text>
-  </View>
-</Card>
-
-
-      {/* Second row: Children + Privacy */}
-      <View
+      <Card
         style={{
           flexDirection: isWide ? "row" : "column",
-          gap: 16,
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 24,
+          padding: 24,
+          minHeight: 250,
         }}
       >
+        {/* Left column: Avatar + info */}
+        <View style={{ alignItems: "flex-start", width: 260 }}>
+          <View
+            style={{
+              width: 100,
+              height: 100,
+              borderRadius: 50,
+              backgroundColor: colors.aqua.light,
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 8,
+            }}
+          >
+            <Text style={{ fontSize: 40, fontWeight: "800", color: colors.aqua.text }}>
+              {nameDraft?.slice(0, 1).toUpperCase() ??
+                emailDraft?.slice(0, 1).toUpperCase() ??
+                "?"}
+            </Text>
+          </View>
+
+          {editing ? (
+            <>
+              <TextInput
+                value={nameDraft}
+                onChangeText={setNameDraft}
+                placeholder="Full Name"
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.base.border,
+                  borderRadius: 6,
+                  padding: 8,
+                  backgroundColor: "white",
+                  marginBottom: 6,
+                  width: "100%",
+                }}
+              />
+              <TextInput
+                value={emailDraft}
+                onChangeText={setEmailDraft}
+                placeholder="Email"
+                autoCapitalize="none"
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.base.border,
+                  borderRadius: 6,
+                  padding: 8,
+                  backgroundColor: "white",
+                  marginBottom: 6,
+                  width: "100%",
+                }}
+              />
+              <TextInput
+                value={dobDraft}
+                onChangeText={setDobDraft}
+                placeholder="Date of Birth"
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.base.border,
+                  borderRadius: 6,
+                  padding: 8,
+                  backgroundColor: "white",
+                  marginBottom: 6,
+                  width: "100%",
+                }}
+              />
+              <TextInput
+                value={bioDraft}
+                onChangeText={setBioDraft}
+                placeholder="Enter your bio"
+                multiline
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.base.border,
+                  borderRadius: 6,
+                  padding: 8,
+                  backgroundColor: "white",
+                  marginBottom: 6,
+                  width: "100%",
+                  minHeight: 80,
+                  textAlignVertical: "top",
+                }}
+              />
+              <Pressable
+                onPress={handleSaveProfile}
+                style={{
+                  backgroundColor: colors.aqua.dark,
+                  paddingVertical: 6,
+                  paddingHorizontal: 14,
+                  borderRadius: 6,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "700" }}>Save</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={{ fontSize: 18, fontWeight: "700", color: colors.base.text }}>
+                {extended?.name ?? nameDraft}
+              </Text>
+              <Text style={{ color: colors.base.muted, fontSize: 13, marginBottom: 4 }}>
+                {extended?.email ?? emailDraft}
+              </Text>
+              <Text style={{ color: colors.base.muted, fontSize: 13, marginBottom: 8 }}>
+                {extended?.dob ?? dobDraft}
+              </Text>
+              <Text style={{ color: colors.base.text, marginBottom: 12 }}>
+                {extended?.bio ?? bioDraft}
+              </Text>
+              <Pressable
+                onPress={() => setEditing(true)}
+                style={{
+                  backgroundColor: colors.aqua.dark,
+                  paddingVertical: 6,
+                  paddingHorizontal: 14,
+                  borderRadius: 6,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "700" }}>Edit Profile</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+
+        {/* Right column: Change Password + Signout */}
+        <View style={{ flex: 1, alignItems: "flex-end", gap: 12 }}>
+          {/* Change password box */}
+          <View
+            style={{
+              width: 260,
+              backgroundColor: colors.peach.light,
+              padding: 12,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: colors.base.border,
+            }}
+          >
+            <Text style={{ fontWeight: "700", marginBottom: 6 }}>Change Password</Text>
+            <TextInput
+              secureTextEntry
+              value={oldPass}
+              onChangeText={setOldPass}
+              placeholder="Current password"
+              style={{
+                borderWidth: 1,
+                borderColor: colors.base.border,
+                borderRadius: 6,
+                padding: 8,
+                backgroundColor: "white",
+                marginBottom: 6,
+              }}
+            />
+            <TextInput
+              secureTextEntry
+              value={newPass}
+              onChangeText={setNewPass}
+              placeholder="New password"
+              style={{
+                borderWidth: 1,
+                borderColor: colors.base.border,
+                borderRadius: 6,
+                padding: 8,
+                backgroundColor: "white",
+                marginBottom: 8,
+              }}
+            />
+            <Pressable
+              disabled={savingPass}
+              onPress={handleChangePassword}
+              style={{
+                backgroundColor: colors.peach.dark,
+                paddingVertical: 6,
+                borderRadius: 6,
+                alignItems: "center",
+                opacity: savingPass ? 0.6 : 1,
+              }}
+            >
+              <Text style={{ color: "white", fontWeight: "700" }}>
+                {savingPass ? "Saving..." : "Save Password"}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Sign out */}
+          <Pressable
+            onPress={async () => {
+              await signOut();
+              navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+            }}
+            style={{
+              backgroundColor: "crimson",
+              paddingVertical: 8,
+              paddingHorizontal: 16,
+              borderRadius: 6,
+            }}
+          >
+            <Text style={{ color: "white", fontWeight: "700" }}>Sign out</Text>
+          </Pressable>
+        </View>
+      </Card>
+
+      {/* Second row: Children + Privacy */}
+      <View style={{ flexDirection: isWide ? "row" : "column", gap: 16 }}>
         <Card>
-          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>
+          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8, color: colors.base.text }}>
             Children
           </Text>
           {extended?.children?.length ? (
             extended.children.map((c, i) => (
-              <Text key={i} style={{ marginBottom: 4 }}>
-                👶 {c.name}, {c.age} yrs
-              </Text>
+              <View
+                key={i}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 10,
+                  backgroundColor: colors.aqua.light,
+                  borderRadius: 12,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderColor: colors.base.border,
+                }}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: colors.aqua.normal,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 12,
+                  }}
+                >
+                  <Text style={{ fontSize: 20, fontWeight: "700", color: colors.aqua.text }}>
+                    {c.name.slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.base.text }}>
+                    {c.name}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: colors.base.muted }}>{c.age} yrs old</Text>
+                </View>
+              </View>
             ))
           ) : (
-            <Text style={{ color: "#6b7280" }}>No children</Text>
+            <Text style={{ color: colors.base.muted }}>No children</Text>
           )}
         </Card>
 
         <Card>
-          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>
+          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8, color: colors.base.text }}>
             Privacy Settings
           </Text>
-          {["Full Name", "Email", "Date of Birth", "Children Names", "Children Ages", "Questions", "Likes", "Replies"].map(
-            (field) => (
-              <View
-                key={field}
-                style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}
+          {[
+            "Full Name",
+            "Email",
+            "Date of Birth",
+            "Children Names",
+            "Children Ages",
+            "Questions",
+            "Likes",
+            "Replies",
+          ].map((field) => (
+            <View
+              key={field}
+              style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}
+            >
+              <Text style={{ flex: 1, color: colors.base.text }}>{field}:</Text>
+              <Picker
+                selectedValue={extended?.privacy?.[field.toLowerCase().replace(" ", "_")] ?? "public"}
+                onValueChange={(v) => console.log(`Update ${field} ->`, v)}
+                style={{ flex: 1, height: 30, color: colors.base.text }}
+                dropdownIconColor={colors.base.text}
               >
-                <Text style={{ flex: 1 }}>{field}:</Text>
-                <Picker
-                  selectedValue={extended?.privacy?.[field.toLowerCase().replace(" ", "_")] ?? "public"}
-                  onValueChange={(v) => console.log(`Update ${field} ->`, v)}
-                  style={{ flex: 1, height: 30 }}
-                >
-                  <Picker.Item label="Public" value="public" />
-                  <Picker.Item label="Private" value="private" />
-                </Picker>
-              </View>
-            )
-          )}
+                <Picker.Item label="Public" value="public" />
+                <Picker.Item label="Private" value="private" />
+              </Picker>
+            </View>
+          ))}
         </Card>
       </View>
 
       {/* Questions */}
-<Card style={{ minHeight: 200 }}>
-  {/* Header row */}
-  <View
-    style={{
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 6,
-    }}
-  >
-    <Text style={{ fontSize: 18, fontWeight: "700", flex: 1 }}>
-      Your Questions
-    </Text>
+      <Card style={{ minHeight: 200 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+          <Text style={{ fontSize: 18, fontWeight: "700", flex: 1, color: colors.base.text }}>
+            Your Questions
+          </Text>
 
-    {/* Buttons */}
-    <View style={{ flexDirection: "row", gap: 8 }}>
-      <Pressable
-        onPress={() => navigation.navigate("MyQuestions")} 
-        style={{
-          paddingHorizontal: 10,
-          paddingVertical: 6,
-          borderRadius: 6,
-          backgroundColor: "#f3f4f6",
-        }}
-      >
-        <Text style={{ color: "#2563eb", fontWeight: "600" }}>See more</Text>
-      </Pressable>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Pressable
+              onPress={() => navigation.navigate("MyQuestions")}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 6,
+                backgroundColor: colors.aqua.light,
+              }}
+            >
+              <Text style={{ color: colors.aqua.text, fontWeight: "600" }}>See more</Text>
+            </Pressable>
 
-      <Pressable
-        onPress={() => navigation.navigate("SavedForums")}
-        style={{
-          paddingHorizontal: 10,
-          paddingVertical: 6,
-          borderRadius: 6,
-          backgroundColor: "#f3f4f6",
-        }}
-      >
-        <Text style={{ color: "#111827", fontWeight: "600" }}>
-          Saved Forums
-        </Text>
-      </Pressable>
-    </View>
-  </View>
+            <Pressable
+              onPress={() => navigation.navigate("SavedForums")}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 6,
+                backgroundColor: colors.peach.light,
+              }}
+            >
+              <Text style={{ color: colors.peach.text, fontWeight: "600" }}>Saved Forums</Text>
+            </Pressable>
+          </View>
+        </View>
 
-  {/* List of questions */}
-  {questions.length > 0 ? (
-    questions.map((q) => (
-      <Pressable
-        key={q.qid}
-        onPress={() =>
-          navigation.navigate("QuestionDetail", { qid: q.qid })
-        }
-        style={{
-          paddingVertical: 8,
-          borderBottomWidth: 1,
-          borderBottomColor: "#e5e7eb",
-        }}
-      >
-        <Text style={{ fontWeight: "600" }}>{q.title}</Text>
-        <Text style={{ color: "#6b7280", fontSize: 13 }}>
-          💬 {q.reply_count} • 🤍 {q.likes}
-        </Text>
-      </Pressable>
-    ))
-  ) : (
-    <Text style={{ color: "#6b7280" }}>No questions yet.</Text>
-  )}
-</Card>
-
+        {questions.length > 0 ? (
+          questions.map((q) => (
+            <Pressable
+              key={q.qid}
+              onPress={() => navigation.navigate("QuestionDetail", { qid: q.qid })}
+              style={{
+                paddingVertical: 8,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.base.border,
+              }}
+            >
+              <Text style={{ fontWeight: "600", color: colors.base.text }}>{q.title}</Text>
+              <Text style={{ color: colors.base.muted, fontSize: 13 }}>
+                💬 {q.reply_count} • 🤍 {q.likes}
+              </Text>
+            </Pressable>
+          ))
+        ) : (
+          <Text style={{ color: colors.base.muted }}>No questions yet.</Text>
+        )}
+      </Card>
     </ScrollView>
   );
 }

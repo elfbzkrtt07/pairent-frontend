@@ -1,15 +1,22 @@
 const colors = {
-  sage: {
-    dark: '#8ddadfff',
-    light: '#c5f0f1ff',
+  aqua: {
+    dark: "#04504fff",
+    normal: "#b7f2ff",
+    light: "#E5FAFA",
+    text: "#022831",
   },
-  amber: {
-    dark: '#f968c6ff',
-    light: '#fcbbe3ff',
+  peach: {
+    dark: "#d17232ff",
+    normal: "#FFd4b7",
+    light: "#FFE9DC",
+    text: "#b8531dff",
+    subtext: "#915e39ff",
   },
-  lemon: {
-    dark: '#F8E07F',
-    light: '#FAEDBE',
+  base: {
+    background: "#f9fafb",
+    text: "#222222",
+    muted: "#a6a6a6ff",  
+    border: "#DDDDDD", 
   },
 };
 

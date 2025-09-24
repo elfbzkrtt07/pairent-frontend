@@ -9,11 +9,12 @@ import {
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { resendSignUpCode } from "aws-amplify/auth";
+import colors from "../../styles/colors";   // ✅ import your palette
 
 export default function ConfirmSignUp({ route, navigation }: any) {
   const { confirmSignUp, signIn } = useAuth();
   const [email, setEmail] = useState(route?.params?.email ?? "");
-  const [pwd, setPwd] = useState(route?.params?.pwd ?? ""); 
+  const [pwd, setPwd] = useState(route?.params?.pwd ?? "");
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -53,7 +54,7 @@ export default function ConfirmSignUp({ route, navigation }: any) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.select({ ios: "padding" })}
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.base.background }}
     >
       <View
         style={{
@@ -68,6 +69,7 @@ export default function ConfirmSignUp({ route, navigation }: any) {
             fontSize: 28,
             fontWeight: "700",
             textAlign: "center",
+            color: "#111827",
           }}
         >
           Confirm your account
@@ -79,7 +81,13 @@ export default function ConfirmSignUp({ route, navigation }: any) {
           placeholder="Email"
           autoCapitalize="none"
           keyboardType="email-address"
-          style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+          style={{
+            borderWidth: 1,
+            borderColor: colors.aqua.dark,
+            backgroundColor: colors.aqua.light,
+            padding: 12,
+            borderRadius: 8,
+          }}
         />
 
         <TextInput
@@ -87,7 +95,13 @@ export default function ConfirmSignUp({ route, navigation }: any) {
           onChangeText={setCode}
           placeholder="Verification code"
           keyboardType="number-pad"
-          style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+          style={{
+            borderWidth: 1,
+            borderColor: colors.peach.dark,
+            backgroundColor: colors.peach.light,
+            padding: 12,
+            borderRadius: 8,
+          }}
         />
 
         {err ? <Text style={{ color: "crimson" }}>{err}</Text> : null}
@@ -102,7 +116,9 @@ export default function ConfirmSignUp({ route, navigation }: any) {
             alignItems: "center",
           }}
         >
-          <Text style={{ color: "white" }}>Confirm</Text>
+          <Text style={{ color: colors.base.background, fontWeight: "600" }}>
+            Confirm
+          </Text>
         </Pressable>
 
         <Pressable onPress={onResend}>
@@ -110,7 +126,8 @@ export default function ConfirmSignUp({ route, navigation }: any) {
             style={{
               textAlign: "center",
               marginTop: 12,
-              color: "blue",
+              color: "#111827",
+              fontWeight: "500",
             }}
           >
             Resend verification code

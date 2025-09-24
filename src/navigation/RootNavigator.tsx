@@ -24,6 +24,29 @@ import SavedForums from "../screens/Profile/SavedForums";
 import TopNav from "../components/TopNav";
 
 const Stack = createNativeStackNavigator();
+const linking = {
+  prefixes: ["http://localhost:8081"], 
+  config: {
+    screens: {
+      Home: "home",
+      Forums: "forums",
+      SearchResults: "forums/search",
+      NewQuestion: "forums/new",
+      QuestionDetail: "forums/:qid", 
+      Timers: "timers",
+      Milestones: "milestones/:childId?",
+      Profile: "profile",
+      ProfilePublic: "profile/:userId",
+      Bibi: "bibi",
+      Breakroom: "breakroom",
+      MyQuestions: "profile/my-questions",
+      SavedForums: "profile/saved-forums",
+      Login: "login",
+      Register: "register",
+      ConfirmSignUp: "confirm",
+    },
+  },
+};
 
 function activeTabFor(
   routeName: string
@@ -33,15 +56,15 @@ function activeTabFor(
       return "home";
     case "QuestionDetail":
     case "Forums":
-    case "SearchResults":  //  show Forums tab active on results
-    case "NewQuestion":    //  and on compose
+    case "SearchResults":
+    case "NewQuestion":    
       return "forums";
     case "Timers":
       return "timers";
     case "Milestones":
       return "milestones";
     default:
-      return undefined; // e.g., Profile, ProfilePublic
+      return undefined; 
   }
 }
 
@@ -57,7 +80,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       {user ? (
         <Stack.Navigator
           screenOptions={({ navigation, route }) => ({
@@ -68,7 +91,7 @@ export default function RootNavigator() {
         >
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="Forums" component={Forums} />
-          <Stack.Screen name="SearchResults" component={SearchResults} /> 
+          <Stack.Screen name="SearchResults" component={SearchResults} />
           <Stack.Screen name="NewQuestion" component={NewQuestion} />
           <Stack.Screen name="QuestionDetail" component={QuestionDetail} />
           <Stack.Screen name="Timers" component={Timers} />

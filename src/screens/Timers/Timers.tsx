@@ -13,6 +13,7 @@ import {
   Platform,
 } from "react-native";
 import * as Notifications from "expo-notifications";
+import colors from "../../styles/colors";
 
 /* ---------- helpers ---------- */
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -180,7 +181,7 @@ export default function Timers({ navigation }: any) {
   const toggleFoodStatus = () =>
     setFoodStatus((s) => (s === "Hungry" ? "Full" : "Hungry"));
 
-  /* ---------- Edit modal (changes TOTAL duration; resets timers) ---------- */
+  /* ---------- Edit modal ---------- */
   const [editOpen, setEditOpen] = useState(false);
   const [nH, setNH] = useState("2");
   const [nM, setNM] = useState("0");
@@ -202,7 +203,6 @@ export default function Timers({ navigation }: any) {
     setNappyTotalMs(newNappy);
     setFoodTotalMs(newFood);
 
-    // Reset & stop to reflect new totals
     setNappyRunning(false);
     setFoodRunning(false);
     setNappyRemainingMs(newNappy);
@@ -221,7 +221,7 @@ export default function Timers({ navigation }: any) {
     <Pressable
       onPress={onPress}
       style={{
-        backgroundColor: "#0f172a",
+        backgroundColor: colors.aqua.dark,
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderRadius: 14,
@@ -243,20 +243,10 @@ export default function Timers({ navigation }: any) {
     onStatus,
     icon,
     iconSize,
-  }: {
-    title: string;
-    timeText: string;
-    subText: string;
-    primaryLabel: "Start" | "Reset";
-    onPrimary: () => void;
-    statusLabel: string;       // e.g., "Asleep" | "Awake" | "Hungry" | "Full"
-    onStatus: () => void;
-    icon?: any;
-    iconSize?: number;
-  }) => (
+  }: any) => (
     <View
       style={{
-        backgroundColor: "#ececec",
+        backgroundColor: colors.aqua.light,
         borderRadius: 24,
         paddingHorizontal: 24,
         paddingVertical: 18,
@@ -265,6 +255,8 @@ export default function Timers({ navigation }: any) {
         minWidth: 420,
         flex: isWide ? 1 : undefined,
         alignSelf: "stretch",
+        borderWidth: 1,
+        borderColor: colors.aqua.normal,
       }}
     >
       {icon ? (
@@ -285,6 +277,7 @@ export default function Timers({ navigation }: any) {
           fontWeight: "700",
           textAlign: "center",
           marginBottom: 8,
+          color: colors.aqua.text,
         }}
       >
         {title}
@@ -296,20 +289,20 @@ export default function Timers({ navigation }: any) {
             width: CIRCLE_SIZE,
             height: CIRCLE_SIZE,
             borderRadius: CIRCLE_SIZE / 2,
-            borderColor: "#a3a3a3",
+            borderColor: colors.aqua.normal,
             borderWidth: 10,
             alignItems: "center",
             justifyContent: "center",
             marginBottom: subText ? 10 : 0,
           }}
         >
-          <Text style={{ fontSize: 36, fontWeight: "800", letterSpacing: 1 }}>
+          <Text style={{ fontSize: 36, fontWeight: "800", letterSpacing: 1, color: colors.aqua.text }}>
             {timeText}
           </Text>
         </View>
 
         {subText ? (
-          <Text style={{ textAlign: "center", color: "#4b5563", marginBottom: 14 }}>
+          <Text style={{ textAlign: "center", color: colors.aqua.text, marginBottom: 14 }}>
             {subText}
           </Text>
         ) : null}
@@ -324,10 +317,7 @@ export default function Timers({ navigation }: any) {
     </View>
   );
 
-  const foodSub = useMemo(
-    () => "",
-    [foodRunning]
-  );
+  const foodSub = useMemo(() => "", [foodRunning]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f6f7f9" }}>
@@ -341,7 +331,6 @@ export default function Timers({ navigation }: any) {
             flex: 1,
           }}
         >
-          {/* Nappy */}
           <Card
             title="Nappy Timer"
             timeText={formatHMS(nappyRemainingMs)}
@@ -354,7 +343,6 @@ export default function Timers({ navigation }: any) {
             iconSize={isWide ? 56 : 44}
           />
 
-          {/* Food */}
           <Card
             title="Food Timer"
             timeText={formatHMS(foodRemainingMs)}
@@ -367,33 +355,34 @@ export default function Timers({ navigation }: any) {
             iconSize={isWide ? 56 : 44}
           />
 
-          {/* Summary – totals only */}
           <View
             style={{
-              backgroundColor: "#ececec",
+              backgroundColor: colors.peach.light,
               borderRadius: 24,
               padding: 25,
               width: isWide ? 360 : "100%",
               height: isWide ? undefined : CARD_HEIGHT,
               justifyContent: "space-between",
               alignSelf: "stretch",
+              borderWidth: 1,
+              borderColor: colors.peach.normal,
             }}
           >
             <View>
-              <Text style={{ fontSize: 20, fontWeight: "800", marginBottom: 10 }}>
+              <Text style={{ fontSize: 20, fontWeight: "800", marginBottom: 10, color: colors.peach.text }}>
                 Summary
               </Text>
-              <Text style={{ marginBottom: 6 }}>
+              <Text style={{ marginBottom: 6, color: colors.base.text }}>
                 {`Nappy Timer: ${formatTotalHM(nappyTotalMs)}`}
               </Text>
-              <Text style={{ marginBottom: 14 }}>
+              <Text style={{ marginBottom: 14, color: colors.base.text }}>
                 {`Food Timer: ${formatTotalHM(foodTotalMs)}`}
               </Text>
 
               <Pressable
                 onPress={openEdit}
                 style={{
-                  backgroundColor: "#0f172a",
+                  backgroundColor: colors.peach.dark,
                   paddingHorizontal: 16,
                   paddingVertical: 12,
                   borderRadius: 12,
@@ -405,13 +394,13 @@ export default function Timers({ navigation }: any) {
             </View>
 
             <View>
-              <Text style={{ color: "#4b5563", marginBottom: 10 }}>
+              <Text style={{ color: colors.peach.subtext, marginBottom: 10 }}>
                 Ask Bibi to learn more about nap and food times for your children
               </Text>
               <Pressable
                 onPress={() => navigation?.navigate?.("Bibi")}
                 style={{
-                  backgroundColor: "#4f46e5",
+                  backgroundColor: colors.peach.dark,
                   paddingHorizontal: 16,
                   paddingVertical: 12,
                   borderRadius: 12,
@@ -425,7 +414,6 @@ export default function Timers({ navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* Edit totals modal */}
       <Modal visible={editOpen} animationType="fade" transparent>
         <View
           style={{
@@ -451,51 +439,21 @@ export default function Timers({ navigation }: any) {
 
             <Text style={{ fontWeight: "700", marginBottom: 6 }}>Nappy (hh:mm)</Text>
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
-              <TextInput
-                value={nH}
-                onChangeText={setNH}
-                keyboardType="numeric"
-                style={inputStyle}
-                placeholder="hh"
-              />
-              <TextInput
-                value={nM}
-                onChangeText={setNM}
-                keyboardType="numeric"
-                style={inputStyle}
-                placeholder="mm"
-              />
+              <TextInput value={nH} onChangeText={setNH} keyboardType="numeric" style={inputStyle} placeholder="hh" />
+              <TextInput value={nM} onChangeText={setNM} keyboardType="numeric" style={inputStyle} placeholder="mm" />
             </View>
 
             <Text style={{ fontWeight: "700", marginBottom: 6 }}>Food (hh:mm)</Text>
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
-              <TextInput
-                value={fH}
-                onChangeText={setFH}
-                keyboardType="numeric"
-                style={inputStyle}
-                placeholder="hh"
-              />
-              <TextInput
-                value={fM}
-                onChangeText={setFM}
-                keyboardType="numeric"
-                style={inputStyle}
-                placeholder="mm"
-              />
+              <TextInput value={fH} onChangeText={setFH} keyboardType="numeric" style={inputStyle} placeholder="hh" />
+              <TextInput value={fM} onChangeText={setFM} keyboardType="numeric" style={inputStyle} placeholder="mm" />
             </View>
 
             <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
-              <Pressable
-                onPress={() => setEditOpen(false)}
-                style={btnLight}
-              >
+              <Pressable onPress={() => setEditOpen(false)} style={btnLight}>
                 <Text style={{ fontWeight: "700" }}>Cancel</Text>
               </Pressable>
-              <Pressable
-                onPress={applyEdit}
-                style={btnDark}
-              >
+              <Pressable onPress={applyEdit} style={btnDark}>
                 <Text style={{ color: "#fff", fontWeight: "700" }}>Save</Text>
               </Pressable>
             </View>

@@ -1,4 +1,3 @@
-// Register.tsx
 import { useMemo, useState } from "react";
 import {
   View,
@@ -15,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useAuth } from "../../context/AuthContext";
+import colors from "../../styles/colors";   
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const toYMD = (d: Date) =>
@@ -23,7 +23,7 @@ const toYMD = (d: Date) =>
 export default function Register({ navigation }: any) {
   const { signUp } = useAuth();
 
-  const [username, setUsername] = useState(""); // <-- Add this
+  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
@@ -57,7 +57,7 @@ export default function Register({ navigation }: any) {
   const onSubmit = async () => {
     setErr("");
     try {
-      await signUp(email.trim(), pwd, name.trim(), dobStr, username.trim()); // <-- Pass username
+      await signUp(email.trim(), pwd, name.trim(), dobStr, username.trim());
       navigation.navigate("ConfirmSignUp", { email: email.trim() });
     } catch (e: any) {
       setErr(e?.message ?? "Registration failed");
@@ -66,24 +66,22 @@ export default function Register({ navigation }: any) {
 
   const field = {
     borderWidth: 1 as const,
-    borderColor: "#ccc",
+    borderColor: colors.base.border,
     padding: 12,
     borderRadius: 6,
-    backgroundColor: "#fff",
-    color: "#222",
+    backgroundColor: colors.base.background,
+    color: colors.base.text,
   };
 
   return (
     <KeyboardAvoidingView
-      // Avoid extra space on web; keep iOS nice with padding
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: "#f5f5f5" }}
+      style={{ flex: 1, backgroundColor: colors.aqua.light }}
     >
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{
-            // Center when there's room; allow scroll when not
             minHeight: "100%",
             paddingVertical: 24,
             paddingHorizontal: 16,
@@ -91,17 +89,17 @@ export default function Register({ navigation }: any) {
             justifyContent: "center",
           }}
         >
-          {/* Centered card, responsive width */}
+          {/* Card */}
           <View
             style={{
               width: "100%",
-              maxWidth: 520,           // tighter than before to fit
+              maxWidth: 520,
               borderWidth: 1,
-              borderColor: "#ddd",
+              borderColor: colors.base.border,
               borderRadius: 12,
-              padding: 20,             // a bit less padding to reduce height
-              backgroundColor: "#fff",
-              gap: 12,                 // tighter gaps
+              padding: 20,
+              backgroundColor: colors.base.background,
+              gap: 12,
               shadowColor: "#000",
               shadowOpacity: 0.05,
               shadowRadius: 4,
@@ -120,11 +118,19 @@ export default function Register({ navigation }: any) {
               resizeMode="contain"
             />
 
-            <Text style={{ fontSize: 26, fontWeight: "700", textAlign: "center", marginBottom: 8 }}>
+            <Text
+              style={{
+                fontSize: 26,
+                fontWeight: "700",
+                textAlign: "center",
+                marginBottom: 8,
+                color: colors.base.text,
+              }}
+            >
               Register
             </Text>
 
-            <Text style={{ color: "#222", fontWeight: "500" }}>Name</Text>
+            <Text style={{ color: colors.base.text, fontWeight: "500" }}>Name</Text>
             <TextInput
               value={name}
               onChangeText={setName}
@@ -132,7 +138,7 @@ export default function Register({ navigation }: any) {
               style={[field]}
             />
 
-            <Text style={{ color: "#222", fontWeight: "500" }}>Username</Text>
+            <Text style={{ color: colors.base.text, fontWeight: "500" }}>Username</Text>
             <TextInput
               value={username}
               onChangeText={setUsername}
@@ -141,7 +147,7 @@ export default function Register({ navigation }: any) {
               style={[field]}
             />
 
-            <Text style={{ color: "#222", fontWeight: "500" }}>Email</Text>
+            <Text style={{ color: colors.base.text, fontWeight: "500" }}>Email</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -151,7 +157,7 @@ export default function Register({ navigation }: any) {
               style={[field]}
             />
 
-            <Text style={{ color: "#222", fontWeight: "500" }}>Password</Text>
+            <Text style={{ color: colors.base.text, fontWeight: "500" }}>Password</Text>
             <TextInput
               value={pwd}
               onChangeText={setPwd}
@@ -160,15 +166,15 @@ export default function Register({ navigation }: any) {
               style={[field]}
             />
 
-            <Text style={{ color: "#222", fontWeight: "500" }}>Date of Birth</Text>
+            <Text style={{ color: colors.base.text, fontWeight: "500" }}>Date of Birth</Text>
 
             {Platform.OS === "web" ? (
               <View
                 style={{
                   borderWidth: 1,
-                  borderColor: "#ccc",
+                  borderColor: colors.base.border,
                   borderRadius: 6,
-                  backgroundColor: "#fff",
+                  backgroundColor: colors.base.background,
                   height: 44,
                   justifyContent: "center",
                   paddingHorizontal: 8,
@@ -194,7 +200,7 @@ export default function Register({ navigation }: any) {
                     lineHeight: 1,
                     padding: 0,
                     fontFamily: "Bahnschrift, Arial, sans-serif",
-                    color: "#222",
+                    color: colors.base.text,
                   }}
                 />
               </View>
@@ -205,15 +211,15 @@ export default function Register({ navigation }: any) {
                   onPress={() => setShowPicker(true)}
                   style={{
                     borderWidth: 1,
-                    borderColor: "#ccc",
+                    borderColor: colors.base.border,
                     borderRadius: 6,
-                    backgroundColor: "#fff",
+                    backgroundColor: colors.base.background,
                     paddingHorizontal: 12,
                     height: 44,
                     justifyContent: "center",
                   }}
                 >
-                  <Text style={{ color: "#222" }}>{dobStr}</Text>
+                  <Text style={{ color: colors.base.text }}>{dobStr}</Text>
                 </TouchableOpacity>
 
                 {Platform.OS === "android" && showPicker && (
@@ -232,7 +238,7 @@ export default function Register({ navigation }: any) {
                     <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.3)" }}>
                       <View
                         style={{
-                          backgroundColor: "#fff",
+                          backgroundColor: colors.base.background,
                           padding: 12,
                           borderTopLeftRadius: 12,
                           borderTopRightRadius: 12,
@@ -243,7 +249,7 @@ export default function Register({ navigation }: any) {
                             <Text style={{ color: "crimson", fontWeight: "600" }}>Cancel</Text>
                           </Pressable>
                           <Pressable onPress={() => setShowPicker(false)}>
-                            <Text style={{ color: "#111827", fontWeight: "700" }}>Done</Text>
+                            <Text style={{ color: colors.base.text, fontWeight: "700" }}>Done</Text>
                           </Pressable>
                         </View>
 
@@ -254,7 +260,7 @@ export default function Register({ navigation }: any) {
                           maximumDate={maxDate}
                           minimumDate={minDate}
                           onChange={handleDateChange}
-                          style={{ backgroundColor: "#fff" }}
+                          style={{ backgroundColor: colors.base.background }}
                         />
                       </View>
                     </View>
@@ -268,22 +274,22 @@ export default function Register({ navigation }: any) {
             <Pressable
               onPress={onSubmit}
               style={{
-                backgroundColor: "#222",
+                backgroundColor: colors.peach.dark,
                 paddingVertical: 12,
                 borderRadius: 8,
                 alignItems: "center",
                 marginTop: 8,
               }}
             >
-              <Text style={{ color: "white", fontWeight: "600" }}>Create Account</Text>
+              <Text style={{ color: colors.base.background, fontWeight: "600" }}>Create Account</Text>
             </Pressable>
           </View>
 
           <View style={{ height: 16 }} />
 
           <Pressable onPress={() => navigation.navigate("Login")}>
-            <Text style={{ textAlign: "center", color: "#222" }}>
-              Already have an account? <Text style={{ color: "blue" }}>Login</Text>
+            <Text style={{ textAlign: "center", color: colors.base.text }}>
+              Already have an account? <Text style={{ color: colors.aqua.dark }}>Login</Text>
             </Text>
           </Pressable>
         </ScrollView>

@@ -1,29 +1,42 @@
 // src/screens/Home/QuestionDetail.tsx
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { View, Text, ScrollView, ActivityIndicator, TextInput, Pressable, Alert, Platform } from "react-native";
 import {
-  getQuestion,
-  listReplies,
-  createReply,
-  likeQuestion,
-  likeReply,
-  deleteReply,
-  getSaved,
-  saveDiscussion,
-  unsaveDiscussion,
-  type QuestionDetail as QD,
-  type Reply as ReplyT,
-} from "../../services/forum";
-import { useAuth } from "../../context/AuthContext";
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  TextInput,
+  Pressable,
+  Alert,
+  Platform,
+} from "react-native";
+import { fetchAuthSession } from "aws-amplify/auth";
+import colors from "../../styles/colors";
+
+type Question = {
+  qid: string;
+  title: string;
+  body: string;
+  name: string;
+  child_age_label: string;
+  likes: number;
+};
+
+type Reply = {
+  rid: string;
+  parentId: string | null;
+  body: string;
+  name: string;
+  likes: number;
+};
 
 export default function QuestionDetailScreen({ route, navigation }: any) {
   const { qid } = route.params as { qid: string };
-  const { user } = useAuth();
 
-  const [q, setQ] = useState<QD | null>(null);
+  const [q, setQ] = useState<Question | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [replyMap, setReplyMap] = useState<Record<string, ReplyT[]>>({});
+  const [replyMap, setReplyMap] = useState<Record<string, Reply[]>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [loadingChildren, setLoadingChildren] = useState<Record<string, boolean>>({});
   const [likedQuestion, setLikedQuestion] = useState(false);
@@ -34,100 +47,203 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
   const [replyTo, setReplyTo] = useState<string | null>(null);
 
   const ROOT = "__root__";
-  const currentDisplayName =
-    (user?.name as string) || (user?.username as string) || (user?.email as string) || "Anonymous parent";
 
-  const isOwner = !!q && q.name === currentDisplayName;
-
-  // initial load
+  // Initial load: fetch question + replies + saved
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      setLoading(true);
-      const [question, topLevel, savedState] = await Promise.all([
-        getQuestion(qid),
-        listReplies({ qid, parentId: null }),
-        getSaved(qid),
-      ]);
-      if (!mounted) return;
-      setQ(question);
-      setReplyMap({ [ROOT]: topLevel.items });
-      setSaved(savedState.saved);
-      setLoading(false);
-    })();
-    return () => { mounted = false; };
+    const load = async () => {
+      try {
+        setLoading(true);
+        const session = await fetchAuthSession();
+        const token = session.tokens?.accessToken?.toString();
+
+        const [qRes, repliesRes, savedRes] = await Promise.all([
+          fetch(`http://localhost:5000/questions/${qid}`, {
+            headers: { Authorization: token ? `Bearer ${token}` : "" },
+          }),
+          fetch(`http://localhost:5000/questions/${qid}/replies`, {
+            headers: { Authorization: token ? `Bearer ${token}` : "" },
+          }),
+          fetch(`http://localhost:5000/questions/${qid}/saved`, {
+            headers: { Authorization: token ? `Bearer ${token}` : "" },
+          }),
+        ]);
+
+        if (!qRes.ok || !repliesRes.ok) {
+          console.error("Failed to load question or replies");
+          return;
+        }
+
+        const qData = await qRes.json();
+        const repliesData = await repliesRes.json();
+        const savedData = savedRes.ok ? await savedRes.json() : { saved: false };
+
+        setQ(qData);
+        setReplyMap({ [ROOT]: repliesData.items || [] });
+        setSaved(savedData.saved || false);
+      } catch (err) {
+        console.error("Network error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
   }, [qid]);
 
   const topLevelReplies = replyMap[ROOT] ?? [];
 
-  // 🔑 Save/Unsave toggle
   const onToggleSaved = useCallback(async () => {
     const next = !saved;
     setSaved(next);
+
     try {
-      if (next) await saveDiscussion(qid);
-      else await unsaveDiscussion(qid);
-    } catch (e) {
-      setSaved(!next); // revert on error
+      const session = await fetchAuthSession();
+      const token = session.tokens?.accessToken?.toString();
+
+      const res = await fetch(`http://localhost:5000/questions/${qid}/saved`, {
+        method: next ? "POST" : "DELETE",
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
+      });
+
+      if (!res.ok) {
+        setSaved(!next); // revert on error
+      }
+    } catch {
+      setSaved(!next);
     }
   }, [saved, qid]);
 
-  const handleToggleChildren = useCallback(async (parentRid: string) => {
-    const isOpen = !!expanded[parentRid];
-    if (isOpen) {
-      setExpanded((prev) => ({ ...prev, [parentRid]: false }));
-      return;
-    }
-    if (!replyMap[parentRid]) {
-      setLoadingChildren((prev) => ({ ...prev, [parentRid]: true }));
-      const { items } = await listReplies({ qid, parentId: parentRid });
-      setReplyMap((prev) => ({ ...prev, [parentRid]: items }));
-      setLoadingChildren((prev) => ({ ...prev, [parentRid]: false }));
-    }
-    setExpanded((prev) => ({ ...prev, [parentRid]: true }));
-  }, [expanded, replyMap, qid]);
+  const handleToggleChildren = useCallback(
+    async (parentRid: string) => {
+      const isOpen = !!expanded[parentRid];
+      if (isOpen) {
+        setExpanded((prev) => ({ ...prev, [parentRid]: false }));
+        return;
+      }
+
+      if (!replyMap[parentRid]) {
+        setLoadingChildren((prev) => ({ ...prev, [parentRid]: true }));
+        try {
+          const session = await fetchAuthSession();
+          const token = session.tokens?.accessToken?.toString();
+
+          const res = await fetch(
+            `http://localhost:5000/questions/${qid}/replies?parentId=${parentRid}`,
+            { headers: { Authorization: token ? `Bearer ${token}` : "" } }
+          );
+
+          if (res.ok) {
+            const data = await res.json();
+            setReplyMap((prev) => ({ ...prev, [parentRid]: data.items || [] }));
+          }
+        } finally {
+          setLoadingChildren((prev) => ({ ...prev, [parentRid]: false }));
+        }
+      }
+
+      setExpanded((prev) => ({ ...prev, [parentRid]: true }));
+    },
+    [expanded, replyMap, qid]
+  );
 
   const onToggleQuestionLike = useCallback(async () => {
     const next = !likedQuestion;
     setLikedQuestion(next);
-    const newCount = await likeQuestion(qid, next);
-    setQ((prev) => (prev ? { ...prev, likes: newCount } : prev));
+
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.accessToken?.toString();
+
+      const res = await fetch(`http://localhost:5000/questions/${qid}/like`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({ like: next }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setQ((prev) => (prev ? { ...prev, likes: data.likes } : prev));
+      }
+    } catch (err) {
+      console.error("Like failed:", err);
+    }
   }, [likedQuestion, qid]);
 
-  const onToggleReplyLike = useCallback(async (rid: string) => {
-    const next = !replyLiked[rid];
-    setReplyLiked((prev) => ({ ...prev, [rid]: next }));
-    const newCount = await likeReply(rid, next);
-    setReplyMap((prev) => {
-      const clone: Record<string, ReplyT[]> = {};
-      for (const k of Object.keys(prev)) {
-        clone[k] = prev[k].map((r) => (r.rid === rid ? { ...r, likes: newCount } : r));
-      }
-      return clone;
-    });
-  }, [replyLiked]);
+  const onToggleReplyLike = useCallback(
+    async (rid: string) => {
+      const next = !replyLiked[rid];
+      setReplyLiked((prev) => ({ ...prev, [rid]: next }));
 
-  const onSetReplyTarget = useCallback((rid: string | null) => setReplyTo(rid), []);
+      try {
+        const session = await fetchAuthSession();
+        const token = session.tokens?.accessToken?.toString();
+
+        const res = await fetch(`http://localhost:5000/replies/${rid}/like`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+          body: JSON.stringify({ like: next }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setReplyMap((prev) => {
+            const clone: Record<string, Reply[]> = {};
+            for (const k of Object.keys(prev)) {
+              clone[k] = prev[k].map((r) =>
+                r.rid === rid ? { ...r, likes: data.likes } : r
+              );
+            }
+            return clone;
+          });
+        }
+      } catch (err) {
+        console.error("Reply like failed:", err);
+      }
+    },
+    [replyLiked]
+  );
 
   const onSubmitReply = useCallback(async () => {
     const text = replyText.trim();
     if (!text || !q) return;
 
-    const parentId = replyTo ?? null;
-    const newReply = await createReply({ qid: q.qid, parentId, body: text, name: currentDisplayName });
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.accessToken?.toString();
 
-    setReplyText("");
-    setReplyTo(null);
+      const res = await fetch(`http://localhost:5000/questions/${qid}/replies`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({ parentId: replyTo, body: text }),
+      });
 
-    setReplyMap((prev) => {
-      if (parentId === null) return { ...prev, [ROOT]: [...(prev[ROOT] ?? []), newReply] };
-      const existing = prev[parentId] ?? [];
-      return { ...prev, [parentId]: [...existing, newReply] };
-    });
-    if (parentId) setExpanded((prev) => ({ ...prev, [parentId]: true }));
-  }, [replyText, q, replyTo, currentDisplayName]);
+      if (res.ok) {
+        const newReply = await res.json();
+        setReplyText("");
+        setReplyTo(null);
 
-  // delete reply (only own replies)
+        setReplyMap((prev) => {
+          if (replyTo === null)
+            return { ...prev, [ROOT]: [...(prev[ROOT] ?? []), newReply] };
+          const existing = prev[replyTo] ?? [];
+          return { ...prev, [replyTo]: [...existing, newReply] };
+        });
+        if (replyTo) setExpanded((prev) => ({ ...prev, [replyTo]: true }));
+      }
+    } catch (err) {
+      console.error("Failed to submit reply:", err);
+    }
+  }, [replyText, q, replyTo, qid]);
+
   const onDeleteReply = useCallback(async (rid: string) => {
     let confirmed = true;
     if (Platform.OS === "web") {
@@ -144,79 +260,85 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     if (!confirmed) return;
 
     try {
-      await deleteReply(rid);
+      const session = await fetchAuthSession();
+      const token = session.tokens?.accessToken?.toString();
+
+      await fetch(`http://localhost:5000/replies/${rid}`, {
+        method: "DELETE",
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
+      });
+
       setReplyMap((prev) => {
-        const toRemove = new Set<string>([rid]);
-        let grew = true;
-        while (grew) {
-          grew = false;
-          for (const list of Object.values(prev)) {
-            for (const r of list) {
-              if (r.parentId && toRemove.has(r.parentId) && !toRemove.has(r.rid)) {
-                toRemove.add(r.rid);
-                grew = true;
-              }
-            }
-          }
-        }
-        const next: Record<string, ReplyT[]> = {};
+        const next: Record<string, Reply[]> = {};
         for (const key of Object.keys(prev)) {
-          if (toRemove.has(key)) continue;
-          next[key] = prev[key].filter((r) => !toRemove.has(r.rid));
+          next[key] = prev[key].filter((r) => r.rid !== rid);
         }
         return next;
       });
-    } catch (e) {
-      if (Platform.OS !== "web") {
-        Alert.alert("Error", "Could not delete reply.");
-      }
+    } catch (err) {
+      console.error("Failed to delete reply:", err);
     }
   }, []);
 
-  const renderReplyNode = useCallback((r: ReplyT, level: number) => {
-    const children = replyMap[r.rid] ?? [];
-    const isOpen = !!expanded[r.rid];
-    const isLoading = !!loadingChildren[r.rid];
-    const isMe = r.name === currentDisplayName;
+  const renderReplyNode = useCallback(
+    (r: Reply, level: number) => {
+      const children = replyMap[r.rid] ?? [];
+      const isOpen = !!expanded[r.rid];
+      const isLoading = !!loadingChildren[r.rid];
 
-    return (
-      <View key={r.rid} style={{ backgroundColor: "#fff", borderRadius: 10, padding: 12, marginBottom: 8, marginLeft: level * 16 }}>
-        <Text style={{ fontWeight: "700", marginBottom: 4 }}>{r.name}</Text>
-        <Text style={{ marginBottom: 8 }}>{r.body}</Text>
+      return (
+        <View
+          key={r.rid}
+          style={{
+            backgroundColor: colors.aqua.light,
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 8,
+            marginLeft: level * 16,
+            borderWidth: 1,
+            borderColor: colors.base.border,
+          }}
+        >
+          <Text style={{ fontWeight: "700", marginBottom: 4, color: colors.base.text }}>{r.name}</Text>
+          <Text style={{ marginBottom: 8, color: colors.base.text }}>{r.body}</Text>
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Pressable onPress={() => onToggleReplyLike(r.rid)} style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ fontSize: 16 }}>{replyLiked[r.rid] ? "❤️" : "🤍"}</Text>
-            <Text style={{ fontSize: 16, marginLeft: 6 }}>{r.likes}</Text>
-          </Pressable>
-
-          <Pressable onPress={() => onSetReplyTarget(r.rid)} style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ fontSize: 16 }}>💬</Text>
-            <Text style={{ fontSize: 14, marginLeft: 6, color: "#2563eb" }}>Reply</Text>
-          </Pressable>
-
-          <Pressable onPress={() => handleToggleChildren(r.rid)} style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ fontSize: 14, color: "#2563eb" }}>
-              {isOpen ? "Hide replies" : "View all replies"}
-            </Text>
-          </Pressable>
-
-          {isMe && (
-            <Pressable onPress={() => onDeleteReply(r.rid)} style={{ marginLeft: 6 }}>
-              <Text style={{ fontSize: 14, color: "#b91c1c" }}>Delete</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Pressable onPress={() => onToggleReplyLike(r.rid)}>
+              <Text style={{ fontSize: 14, color: colors.aqua.text }}>
+                {replyLiked[r.rid] ? "❤️" : "🤍"} {r.likes}
+              </Text>
             </Pressable>
+
+            <Pressable onPress={() => setReplyTo(r.rid)}>
+              <Text style={{ fontSize: 14, color: colors.aqua.text }}>💬 Reply</Text>
+            </Pressable>
+
+            <Pressable onPress={() => handleToggleChildren(r.rid)}>
+              <Text style={{ fontSize: 14, color: colors.aqua.text }}>
+                {isOpen ? "Hide replies" : "View all replies"}
+              </Text>
+            </Pressable>
+
+            <Pressable onPress={() => onDeleteReply(r.rid)}>
+              <Text style={{ fontSize: 14, color: colors.aqua.dark }}>Delete</Text>
+            </Pressable>
+          </View>
+
+          {isLoading && (
+            <View style={{ marginTop: 10 }}>
+              <ActivityIndicator color={colors.aqua.dark} />
+            </View>
+          )}
+          {isOpen && !isLoading && children.length > 0 && (
+            <View style={{ marginTop: 10 }}>
+              {children.map((child) => renderReplyNode(child, level + 1))}
+            </View>
           )}
         </View>
-
-        {isLoading && <View style={{ marginTop: 10 }}><ActivityIndicator /></View>}
-        {isOpen && !isLoading && children.length > 0 && (
-          <View style={{ marginTop: 10 }}>
-            {children.map((child) => renderReplyNode(child, level + 1))}
-          </View>
-        )}
-      </View>
-    );
-  }, [expanded, loadingChildren, onSetReplyTarget, onToggleReplyLike, replyLiked, replyMap, handleToggleChildren, onDeleteReply, currentDisplayName]);
+      );
+    },
+    [expanded, loadingChildren, replyMap, replyLiked, onToggleReplyLike, handleToggleChildren, onDeleteReply]
+  );
 
   const replyingToObj = useMemo(() => {
     if (!replyTo) return null;
@@ -230,77 +352,70 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
   if (loading || !q) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.aqua.dark} />
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16 }} style={{ backgroundColor: "#f3f4f6" }}>
-      {/* Question header */}
-      <View style={{ backgroundColor: "#ededed", borderRadius: 12, padding: 14 }}>
-        <Text style={{ fontSize: 20, fontWeight: "800", marginBottom: 8 }}>{q.title}</Text>
+    <ScrollView contentContainerStyle={{ padding: 16 }} style={{ backgroundColor: colors.base.background }}>
+      <View
+        style={{
+          backgroundColor: colors.aqua.light,
+          borderRadius: 12,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: colors.base.border,
+        }}
+      >
+        <Text style={{ fontSize: 20, fontWeight: "800", marginBottom: 8, color: colors.base.text }}>
+          {q.title}
+        </Text>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <Text>👤 {q.name}</Text>
-          <View style={{ backgroundColor: "#6b7280", borderRadius: 24, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ color: "white", fontWeight: "600" }}>{q.child_age_label}</Text>
+          <Text style={{ color: colors.base.text }}>👤 {q.name}</Text>
+          <View
+            style={{
+              backgroundColor: colors.aqua.dark,
+              borderRadius: 24,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "600" }}>{q.child_age_label}</Text>
           </View>
 
           <View style={{ flex: 1 }} />
 
-          {/* Save/Unsave */}
-          <Pressable onPress={onToggleSaved} style={{ flexDirection: "row", alignItems: "center", marginRight: 8 }}>
-            <Text style={{ fontSize: 16 }}>{saved ? "🔖" : "🏷️"}</Text>
-            <Text style={{ fontSize: 14, marginLeft: 6, color: "#2563eb" }}>
-              {saved ? "Saved" : "Save"}
+          <Pressable onPress={onToggleSaved} style={{ marginRight: 8 }}>
+            <Text style={{ fontSize: 14, color: colors.aqua.text }}>
+              {saved ? "🔖 Saved" : "🏷️ Save"}
             </Text>
           </Pressable>
 
-          {/* Like */}
-          <Pressable onPress={onToggleQuestionLike} style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ fontSize: 16 }}>{likedQuestion ? "❤️" : "🤍"}</Text>
-            <Text style={{ fontSize: 16, marginLeft: 6 }}>{q.likes}</Text>
+          <Pressable onPress={onToggleQuestionLike}>
+            <Text style={{ fontSize: 14, color: colors.aqua.text }}>
+              {likedQuestion ? "❤️ Liked" : "🤍 Like"} ({q.likes})
+            </Text>
           </Pressable>
         </View>
 
-        <Text style={{ lineHeight: 22 }}>{q.body}</Text>
-
-        {/* Edit/Delete buttons only for owner */}
-        {isOwner && (
-          <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
-            <Pressable onPress={() => navigation.navigate("EditQuestion", { qid: q.qid })}>
-              <Text style={{ color: "#2563eb" }}>Edit</Text>
-            </Pressable>
-            <Pressable
-              onPress={() =>
-                Alert.alert("Delete Question", "Are you sure?", [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: () => console.log("TODO: call DELETE /questions/" + q.qid),
-                  },
-                ])
-              }
-            >
-              <Text style={{ color: "#b91c1c" }}>Delete</Text>
-            </Pressable>
-          </View>
-        )}
+        <Text style={{ lineHeight: 22, color: colors.base.text }}>{q.body}</Text>
       </View>
 
-      {/* Replies */}
       <View style={{ marginTop: 16 }}>
-        <Text style={{ fontSize: 18, fontWeight: "800", marginBottom: 8 }}>Replies</Text>
+        <Text style={{ fontSize: 18, fontWeight: "800", marginBottom: 8, color: colors.base.text }}>
+          Replies
+        </Text>
         {topLevelReplies.map((r) => renderReplyNode(r, 0))}
       </View>
 
-      {/* Composer */}
       <View style={{ marginTop: 24 }}>
-        <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 8 }}>
+        <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 8, color: colors.base.text }}>
           {replyingToObj
-            ? `Replying to ${replyingToObj.name}: "${replyingToObj.body.slice(0, 40)}${replyingToObj.body.length > 40 ? "..." : ""}"`
+            ? `Replying to ${replyingToObj.name}: "${replyingToObj.body.slice(0, 40)}${
+                replyingToObj.body.length > 40 ? "..." : ""
+              }"`
             : "Add a reply"}
         </Text>
 
@@ -308,14 +423,16 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
           value={replyText}
           onChangeText={setReplyText}
           placeholder="Write your reply..."
+          placeholderTextColor={colors.base.text}
           style={{
-            backgroundColor: "#fff",
+            backgroundColor: colors.aqua.light,
             borderRadius: 8,
             borderWidth: 1,
-            borderColor: "#ccc",
+            borderColor: colors.base.border,
             padding: 12,
             marginBottom: 8,
             minHeight: 48,
+            color: colors.base.text,
           }}
           multiline
         />
@@ -323,13 +440,13 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
         <Pressable
           onPress={onSubmitReply}
           style={{
-            backgroundColor: "#111827",
+            backgroundColor: colors.aqua.dark,
             paddingVertical: 12,
             borderRadius: 8,
             alignItems: "center",
           }}
         >
-          <Text style={{ color: "white", fontWeight: "600" }}>
+          <Text style={{ color: "#fff", fontWeight: "700" }}>
             {replyingToObj ? "Reply" : "Send"}
           </Text>
         </Pressable>
@@ -337,9 +454,16 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
         {replyTo && (
           <Pressable
             onPress={() => setReplyTo(null)}
-            style={{ marginTop: 8, alignSelf: "flex-end", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: "#f3f4f6" }}
+            style={{
+              marginTop: 8,
+              alignSelf: "flex-end",
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 6,
+              backgroundColor: colors.aqua.light,
+            }}
           >
-            <Text style={{ color: "#2563eb" }}>Cancel reply</Text>
+            <Text style={{ color: colors.aqua.text }}>Cancel reply</Text>
           </Pressable>
         )}
       </View>

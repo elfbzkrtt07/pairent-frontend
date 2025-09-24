@@ -1,17 +1,8 @@
 // src/screens/Home/NewQuestion.tsx
-/*
-import { View, Text } from "react-native";
-export default function NewQuestion({ navigation }: any) {
-  return (
-    <View style={{ flex: 1, backgroundColor: "#f3f4f6" }}>
-      <View style={{ padding: 16 }}><Text>New Question form (wire to backend later)</Text></View>
-    </View>
-  );
-}
-*/
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { fetchAuthSession } from "aws-amplify/auth";
+import colors from "../../styles/colors";
 
 export default function NewQuestion({ navigation }: any) {
   const [title, setTitle] = useState("");
@@ -39,61 +30,96 @@ export default function NewQuestion({ navigation }: any) {
           title: title,
           body: description,
           tags: [],
-          age: 2
+          age: 2,
         }),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        console.error("❌ Backend error:", err);
+        console.error("Backend error:", err);
         Alert.alert("Error", "Could not save question");
         return;
       }
 
       // 3. Success
       const data = await res.json();
-      console.log("✅ Saved question:", data);
+      console.log("Saved question:", data);
 
       Alert.alert("Success", "Your question has been posted!");
       navigation.goBack();
     } catch (err) {
-      console.error("❌ Network error:", err);
+      console.error("Network error:", err);
       Alert.alert("Error", "Something went wrong.");
     }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f3f4f6", padding: 16 }}>
-      <Text style={{ fontSize: 24, fontWeight: "600", marginBottom: 20 }}>
+    <View style={{ flex: 1, backgroundColor: colors.base.background, padding: 16 }}>
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: "800",
+          marginBottom: 20,
+          color: colors.aqua.text,
+        }}
+      >
         New Question
       </Text>
+
       <TextInput
         value={title}
         onChangeText={setTitle}
         placeholder="Enter your question"
-        style={{ backgroundColor: "white", borderRadius: 8, padding: 12, marginBottom: 16 }}
+        placeholderTextColor={colors.base.text}
+        style={{
+          backgroundColor: colors.aqua.light,
+          borderRadius: 8,
+          padding: 12,
+          marginBottom: 16,
+          borderWidth: 1,
+          borderColor: colors.base.border,
+          color: colors.base.text,
+        }}
       />
+
       <TextInput
         value={description}
         onChangeText={setDescription}
         placeholder="Add details"
+        placeholderTextColor={colors.base.text}
         multiline
-        style={{ backgroundColor: "white", borderRadius: 8, padding: 12, height: 120, textAlignVertical: "top" }}
+        style={{
+          backgroundColor: colors.aqua.light,
+          borderRadius: 8,
+          padding: 12,
+          height: 120,
+          textAlignVertical: "top",
+          borderWidth: 1,
+          borderColor: colors.base.border,
+          color: colors.base.text,
+        }}
       />
-    <Pressable
-    onPress={handleSubmit}
-    style={{
-        backgroundColor: "#222",
-        paddingVertical: 14,
-        borderRadius: 8,
-        alignItems: "center",
-        marginTop: 20, // ✅ Added margin
-    }}
-    >
-    <Text style={{ color: "white", fontSize: 16, fontWeight: "600" }}>
-        Submit Question
-    </Text>
-    </Pressable>
+
+      <Pressable
+        onPress={handleSubmit}
+        style={{
+          backgroundColor: colors.aqua.dark,
+          paddingVertical: 14,
+          borderRadius: 8,
+          alignItems: "center",
+          marginTop: 20,
+        }}
+      >
+        <Text
+          style={{
+            color: "#fff",
+            fontSize: 16,
+            fontWeight: "700",
+          }}
+        >
+          Submit Question
+        </Text>
+      </Pressable>
     </View>
   );
 }

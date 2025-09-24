@@ -21,9 +21,8 @@ export default function ProfilePublic({ route, navigation }: any) {
     if (!userId) return;
     (async () => {
       try {
-        // 1. Fetch user public info
+        /* not yet implemented in backend*/
         const userRes = await fetch(`http://localhost:5000/users/${userId}`);
-        // 2. Fetch their questions
         const qRes = await fetch(`http://localhost:5000/questions/by-user/${userId}?limit=3&sort=popular`);
 
         if (userRes.ok) setProfile(await userRes.json());

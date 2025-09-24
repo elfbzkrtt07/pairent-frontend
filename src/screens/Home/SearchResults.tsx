@@ -1,66 +1,108 @@
+// src/screens/Home/SearchResults.tsx
 import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, ScrollView } from "react-native";
 import ForumCard, { ForumCardItem } from "../../components/ForumCard";
-import { fetchAuthSession } from "aws-amplify/auth";
+import colors from "../../styles/colors";
 
 export default function SearchResults({ route, navigation }: any) {
   const { q } = route.params as { q: string };
   const [items, setItems] = useState<ForumCardItem[] | null>(null);
 
+  // 🔹 Mock data for testing
+  const mockResults: ForumCardItem[] = [
+    {
+      qid: "q1",
+      title: "How do I get my toddler to eat veggies?",
+      author_name: "Alice",
+      child_age: 3,
+      likes: 12,
+      reply_count: 5,
+      created_at: "20250101",
+    },
+    {
+      qid: "q2",
+      title: "Sleep regression at 6 months?",
+      author_name: "Bob",
+      child_age: 1,
+      likes: 22,
+      reply_count: 8,
+      created_at: "20250102",
+    },
+    {
+      qid: "q3",
+      title: "Best educational toys for a 2-year-old?",
+      author_name: "Carol",
+      child_age: 2,
+      likes: 8,
+      reply_count: 3,
+      created_at: "20250103",
+    },
+  ];
+
   useEffect(() => {
-    const fetchSearchResults = async () => {
-      try {
-        setItems(null); 
-
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
-        const res = await fetch(`http://localhost:5000/questions/search?q=${encodeURIComponent(q)}`, {
-          method: "GET",
-          headers: {
-            Authorization: accessToken ? `Bearer ${accessToken}` : "",
-          },
-        });
-
-        if (!res.ok) {
-          console.error("Failed to fetch search results:", res.status);
-          return;
-        }
-
-        const data = await res.json();
-        setItems(data.items || []);
-      } catch (err) {
-        console.error("Search error:", err);
-      }
-    };
-
-    fetchSearchResults();
+    setItems(null); // show spinner first
+    setTimeout(() => {
+      const filtered = mockResults.filter((item) =>
+        item.title.toLowerCase().includes(q.toLowerCase())
+      );
+      setItems(filtered);
+    }, 600);
   }, [q]);
 
-  // ✅ Add the missing return statement
   if (!items) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: colors.base.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.peach.dark} />
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16 }}>
-      <Text style={{ fontSize: 20, fontWeight: "800", marginBottom: 12 }}>
+    <ScrollView
+      contentContainerStyle={{ padding: 16 }}
+      style={{ backgroundColor: colors.base.background }} // neutral bg
+    >
+      <Text
+        style={{
+          fontSize: 20,
+          fontWeight: "800",
+          marginBottom: 12,
+          color: colors.peach.text,
+        }}
+      >
         {items.length} result{items.length !== 1 ? "s" : ""} found with “{q}”
       </Text>
 
       {items.map((item) => (
-        <ForumCard
+        <View
           key={item.qid}
-          item={item}
-          onPress={() => navigation.navigate("QuestionDetail", { qid: item.qid })}
-          onReplyPress={() => navigation.navigate("QuestionDetail", { qid: item.qid })}
-        />
+          style={{
+            backgroundColor: colors.peach.light,
+            borderRadius: 12,
+            padding: 14,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: colors.base.border,
+          }}
+        >
+          <ForumCard
+            item={item}
+            onPress={() =>
+              navigation.navigate("QuestionDetail", { qid: item.qid })
+            }
+            onReplyPress={() =>
+              navigation.navigate("QuestionDetail", { qid: item.qid })
+            }
+          />
+        </View>
       ))}
     </ScrollView>
   );
 }
-
