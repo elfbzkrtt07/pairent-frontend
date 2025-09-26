@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { View, Text, ScrollView, ActivityIndicator, Pressable, Alert } from "react-native";
 import ForumCard, { ForumCardItem } from "../../components/ForumCard";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { listMyQuestions, deleteQuestion } from "../../services/forum";
 import colors from "../../styles/colors";
 
 export default function MyQuestions({ navigation }: any) {
@@ -12,23 +12,8 @@ export default function MyQuestions({ navigation }: any) {
     const loadMine = async () => {
       try {
         setLoading(true);
-
-        const session = await fetchAuthSession();
-        const token = session.tokens?.accessToken?.toString();
-
-        const res = await fetch("http://localhost:5000/questions/me", {
-          method: "GET",
-          headers: { Authorization: token ? `Bearer ${token}` : "" },
-        });
-
-        if (!res.ok) {
-          console.error("Failed to load my questions:", res.status);
-          setItems([]);
-          return;
-        }
-
-        const data = await res.json();
-        setItems(data.items || []);
+        const data = await listMyQuestions({});
+        setItems((data.items as any[]) || []);
       } catch (err) {
         console.error("Error fetching my questions:", err);
         setItems([]);
@@ -48,13 +33,7 @@ export default function MyQuestions({ navigation }: any) {
         style: "destructive",
         onPress: async () => {
           try {
-            const session = await fetchAuthSession();
-            const token = session.tokens?.accessToken?.toString();
-
-            await fetch(`http://localhost:5000/questions/${qid}`, {
-              method: "DELETE",
-              headers: { Authorization: token ? `Bearer ${token}` : "" },
-            });
+            await deleteQuestion(qid);
 
             setItems((prev) => prev ? prev.filter((item) => item.qid !== qid) : prev);
           } catch (err) {

@@ -10,7 +10,8 @@ import {
   TextInput,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { listQuestions } from "../../services/forum";
+import { getDailyTip } from "../../services/tips";
 import colors from "../../styles/colors";
 
 type SortKey = "recent" | "popular";
@@ -34,31 +35,16 @@ export default function Home({ navigation }: any) {
   const [sort, setSort] = useState<SortKey>("popular");
   const [query, setQuery] = useState("");
   const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
+  const [dailyTip, setDailyTip] = useState<string>("");
 
   // Fetch questions from backend
   useEffect(() => {
     const loadQuestions = async () => {
       try {
         setLoading(true);
-
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
         const backendSort = sort === "recent" ? "new" : sort;
-        const url = `http://localhost:5000/questions?limit=3&sort=${backendSort}`;
-        const res = await fetch(url, {
-          method: "GET",
-          headers: { Authorization: accessToken ? `Bearer ${accessToken}` : "" },
-        });
-
-        if (!res.ok) {
-          console.error("Failed to load questions", res.status);
-          setRows([]);
-          return;
-        }
-
-        const data = await res.json();
-        setRows(data.items || []);
+        const data = await listQuestions({ limit: 3, sort: backendSort });
+        setRows((data.items as any[]) || []);
       } catch (err) {
         console.error("Network error:", err);
         setRows([]);
@@ -69,6 +55,18 @@ export default function Home({ navigation }: any) {
 
     loadQuestions();
   }, [sort]);
+
+  // Mocked backend integration for daily tip
+  useEffect(() => {
+    (async () => {
+      try {
+        const tip = await getDailyTip();
+        setDailyTip(tip.text);
+      } catch (e) {
+        setDailyTip("");
+      }
+    })();
+  }, []);
 
   // Only show 2 items on home preview
   const visibleRows = useMemo(() => {
@@ -336,57 +334,57 @@ export default function Home({ navigation }: any) {
                 </Pressable>
               </View>
             ))}
-
-            {/* Random daily AI tips card */}
-            <View
-              style={{
-                marginTop: 16,
-                backgroundColor: colors.peach.light,
-                borderRadius: 12,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: colors.base.border,
-              }}
-            >
+            {/* Daily tip from mock service */}
+            {dailyTip ? (
               <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                  marginBottom: 8,
+                  marginTop: 16,
+                  backgroundColor: colors.peach.light,
+                  borderRadius: 12,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: colors.base.border,
                 }}
               >
-                <Text style={{ fontSize: 22 }}>💡</Text>
-                <Text
-                  style={{ fontSize: 18, fontWeight: "800", color: colors.peach.text }}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 8,
+                  }}
                 >
-                  RANDOM DAILY AI TIPS
+                  <Text style={{ fontSize: 22 }}>💡</Text>
+                  <Text
+                    style={{ fontSize: 18, fontWeight: "800", color: colors.peach.text }}
+                  >
+                    DAILY TIP
+                  </Text>
+                </View>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    lineHeight: 22,
+                    marginBottom: 10,
+                    color: colors.peach.subtext,
+                  }}
+                >
+                  {dailyTip}
                 </Text>
+                <Pressable
+                  onPress={() => navigation.navigate("Bibi")}
+                  style={{
+                    alignSelf: "flex-start",
+                    backgroundColor: colors.peach.dark,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                  }}
+                >
+                  <Text style={{ color: "white", fontWeight: "700" }}>Ask Bibi</Text>
+                </Pressable>
               </View>
-              <Text
-                style={{
-                  fontSize: 15,
-                  lineHeight: 22,
-                  marginBottom: 10,
-                  color: colors.peach.subtext,
-                }}
-              >
-                “Children copy behaviours more than they follow instructions. Show
-                patience, kindness, and curiosity in everyday life.”
-              </Text>
-              <Pressable
-                onPress={() => navigation.navigate("Bibi")}
-                style={{
-                  alignSelf: "flex-start",
-                  backgroundColor: colors.peach.dark,
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  borderRadius: 8,
-                }}
-              >
-                <Text style={{ color: "white", fontWeight: "700" }}>Ask Bibi</Text>
-              </Pressable>
-            </View>
+            ) : null}
           </View>
 
           {/* RIGHT column */}
@@ -409,36 +407,9 @@ export default function Home({ navigation }: any) {
               >
                 ACTIVE BREAKROOMS
               </Text>
+              
 
-              {[
-                { id: "r1", title: "Reading alone", activity: "4/10" },
-                { id: "r2", title: "Coping with work", activity: "7/10" },
-                { id: "r3", title: "Random Chat", activity: "8/10" },
-              ].map((r) => (
-                <View
-                  key={r.id}
-                  style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "600", color: colors.base.text }}>
-                      {r.title}
-                    </Text>
-                    <Text style={{ fontSize: 13, color: colors.peach.subtext }}>
-                      {r.activity}
-                    </Text>
-                  </View>
-                  <Pressable
-                    style={{
-                      backgroundColor: colors.peach.dark,
-                      borderRadius: 999,
-                      paddingHorizontal: 16,
-                      paddingVertical: 6,
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "700" }}>Join</Text>
-                  </Pressable>
-                </View>
-              ))}
+              {/* Breakrooms list will be populated from backend (Agora) later */}
 
               <Pressable
                 onPress={() => navigation.navigate("Bibi")}

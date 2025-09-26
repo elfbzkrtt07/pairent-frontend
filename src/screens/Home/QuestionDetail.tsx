@@ -10,7 +10,17 @@ import {
   Alert,
   Platform,
 } from "react-native";
-import { fetchAuthSession } from "aws-amplify/auth";
+import {
+  getQuestion,
+  listReplies,
+  getSaved,
+  saveDiscussion,
+  unsaveDiscussion,
+  likeQuestion,
+  likeReply,
+  deleteReply,
+  createReply,
+} from "../../services/forum";
 import colors from "../../styles/colors";
 
 type Question = {
@@ -53,33 +63,15 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     const load = async () => {
       try {
         setLoading(true);
-        const session = await fetchAuthSession();
-        const token = session.tokens?.accessToken?.toString();
-
-        const [qRes, repliesRes, savedRes] = await Promise.all([
-          fetch(`http://localhost:5000/questions/${qid}`, {
-            headers: { Authorization: token ? `Bearer ${token}` : "" },
-          }),
-          fetch(`http://localhost:5000/questions/${qid}/replies`, {
-            headers: { Authorization: token ? `Bearer ${token}` : "" },
-          }),
-          fetch(`http://localhost:5000/questions/${qid}/saved`, {
-            headers: { Authorization: token ? `Bearer ${token}` : "" },
-          }),
+        const [qData, repliesData, savedData] = await Promise.all([
+          getQuestion(qid),
+          listReplies({ qid, parentId: null }),
+          getSaved(qid),
         ]);
 
-        if (!qRes.ok || !repliesRes.ok) {
-          console.error("Failed to load question or replies");
-          return;
-        }
-
-        const qData = await qRes.json();
-        const repliesData = await repliesRes.json();
-        const savedData = savedRes.ok ? await savedRes.json() : { saved: false };
-
-        setQ(qData);
-        setReplyMap({ [ROOT]: repliesData.items || [] });
-        setSaved(savedData.saved || false);
+        setQ(qData as any);
+        setReplyMap({ [ROOT]: (repliesData.items as any[]) || [] });
+        setSaved(!!savedData.saved);
       } catch (err) {
         console.error("Network error:", err);
       } finally {
@@ -97,17 +89,8 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     setSaved(next);
 
     try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.accessToken?.toString();
-
-      const res = await fetch(`http://localhost:5000/questions/${qid}/saved`, {
-        method: next ? "POST" : "DELETE",
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
-      });
-
-      if (!res.ok) {
-        setSaved(!next); // revert on error
-      }
+      if (next) await saveDiscussion(qid);
+      else await unsaveDiscussion(qid);
     } catch {
       setSaved(!next);
     }
@@ -124,18 +107,8 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
       if (!replyMap[parentRid]) {
         setLoadingChildren((prev) => ({ ...prev, [parentRid]: true }));
         try {
-          const session = await fetchAuthSession();
-          const token = session.tokens?.accessToken?.toString();
-
-          const res = await fetch(
-            `http://localhost:5000/questions/${qid}/replies?parentId=${parentRid}`,
-            { headers: { Authorization: token ? `Bearer ${token}` : "" } }
-          );
-
-          if (res.ok) {
-            const data = await res.json();
-            setReplyMap((prev) => ({ ...prev, [parentRid]: data.items || [] }));
-          }
+          const data = await listReplies({ qid, parentId: parentRid });
+          setReplyMap((prev) => ({ ...prev, [parentRid]: data.items || [] }));
         } finally {
           setLoadingChildren((prev) => ({ ...prev, [parentRid]: false }));
         }
@@ -151,22 +124,8 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     setLikedQuestion(next);
 
     try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.accessToken?.toString();
-
-      const res = await fetch(`http://localhost:5000/questions/${qid}/like`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-        body: JSON.stringify({ like: next }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setQ((prev) => (prev ? { ...prev, likes: data.likes } : prev));
-      }
+      const likes = await likeQuestion(qid, next);
+      setQ((prev) => (prev ? { ...prev, likes } : prev));
     } catch (err) {
       console.error("Like failed:", err);
     }
@@ -178,30 +137,16 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
       setReplyLiked((prev) => ({ ...prev, [rid]: next }));
 
       try {
-        const session = await fetchAuthSession();
-        const token = session.tokens?.accessToken?.toString();
-
-        const res = await fetch(`http://localhost:5000/replies/${rid}/like`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-          body: JSON.stringify({ like: next }),
+        const likes = await likeReply(rid, next);
+        setReplyMap((prev) => {
+          const clone: Record<string, Reply[]> = {};
+          for (const k of Object.keys(prev)) {
+            clone[k] = prev[k].map((r) =>
+              r.rid === rid ? { ...r, likes } : r
+            );
+          }
+          return clone;
         });
-
-        if (res.ok) {
-          const data = await res.json();
-          setReplyMap((prev) => {
-            const clone: Record<string, Reply[]> = {};
-            for (const k of Object.keys(prev)) {
-              clone[k] = prev[k].map((r) =>
-                r.rid === rid ? { ...r, likes: data.likes } : r
-              );
-            }
-            return clone;
-          });
-        }
       } catch (err) {
         console.error("Reply like failed:", err);
       }
@@ -214,31 +159,17 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     if (!text || !q) return;
 
     try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.accessToken?.toString();
+      const newReply = await createReply({ qid, parentId: replyTo, body: text } as any);
+      setReplyText("");
+      setReplyTo(null);
 
-      const res = await fetch(`http://localhost:5000/questions/${qid}/replies`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-        body: JSON.stringify({ parentId: replyTo, body: text }),
+      setReplyMap((prev) => {
+        if (replyTo === null)
+          return { ...prev, [ROOT]: [...(prev[ROOT] ?? []), newReply] };
+        const existing = prev[replyTo] ?? [];
+        return { ...prev, [replyTo]: [...existing, newReply] };
       });
-
-      if (res.ok) {
-        const newReply = await res.json();
-        setReplyText("");
-        setReplyTo(null);
-
-        setReplyMap((prev) => {
-          if (replyTo === null)
-            return { ...prev, [ROOT]: [...(prev[ROOT] ?? []), newReply] };
-          const existing = prev[replyTo] ?? [];
-          return { ...prev, [replyTo]: [...existing, newReply] };
-        });
-        if (replyTo) setExpanded((prev) => ({ ...prev, [replyTo]: true }));
-      }
+      if (replyTo) setExpanded((prev) => ({ ...prev, [replyTo]: true }));
     } catch (err) {
       console.error("Failed to submit reply:", err);
     }
@@ -260,14 +191,7 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     if (!confirmed) return;
 
     try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.accessToken?.toString();
-
-      await fetch(`http://localhost:5000/replies/${rid}`, {
-        method: "DELETE",
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
-      });
-
+      await deleteReply(rid);
       setReplyMap((prev) => {
         const next: Record<string, Reply[]> = {};
         for (const key of Object.keys(prev)) {

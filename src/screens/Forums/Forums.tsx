@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from "react-native";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { listQuestions, listMyQuestions } from "../../services/forum";
 import colors from "../../styles/colors";
 
 type Reply = {
@@ -41,24 +41,13 @@ export default function Forums({ navigation }: any) {
   useEffect(() => {
     const loadThreads = async () => {
       try {
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
+        const [allData, myData] = await Promise.all([
+          listQuestions({ limit: 10, sort: "new" }),
+          listMyQuestions({ limit: 3, sort: "popular" }),
+        ]);
 
-        const allRes = await fetch("http://localhost:5000/questions?limit=10&sort=new", {
-          method: "GET",
-          headers: { Authorization: accessToken ? `Bearer ${accessToken}` : "" },
-        });
-
-        const myRes = await fetch("http://localhost:5000/questions/me?limit=3&sort=popular", {
-          method: "GET",
-          headers: { Authorization: accessToken ? `Bearer ${accessToken}` : "" },
-        });
-
-        const allData = await allRes.json();
-        const myData = await myRes.json();
-
-        setThreads(allData.items || []);
-        setMyQuestions(myData.items || []);
+        setThreads((allData.items as any[]) || []);
+        setMyQuestions((myData.items as any[]) || []);
       } catch (err) {
         console.error("Network error:", err);
         setThreads([]);

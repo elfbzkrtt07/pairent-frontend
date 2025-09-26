@@ -11,9 +11,10 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { useAuth } from "../../context/AuthContext";
-import { fetchAuthSession, updatePassword } from "aws-amplify/auth";
+import { updatePassword } from "aws-amplify/auth";
 import colors from "../../styles/colors";
 import { ExtendedUser, getMyProfile, updateMyProfile } from "../../services/profile";
+import { listMyQuestions } from "../../services/forum";
 
 type Question = { qid: string; title: string; reply_count: number; likes: number };
 
@@ -67,16 +68,9 @@ export default function Profile({ navigation }: any) {
         setDobDraft(profile.dob ?? "");
         setBioDraft(profile.bio ?? "");
 
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
-        const qRes = await fetch("http://localhost:5000/questions/me?limit=5&sort=recent", {
-          headers: { Authorization: accessToken ? `Bearer ${accessToken}` : "" },
-        });
-        if (qRes.ok) {
-          const data = await qRes.json();
-          setQuestions(data.items || []);
-        }
+        // Use forum service for user's questions
+        const data = await listMyQuestions({ limit: 5, sort: "new" });
+        setQuestions((data.items as any[]) || []);
       } catch (e) {
         console.error("Failed to load profile:", e);
       } finally {

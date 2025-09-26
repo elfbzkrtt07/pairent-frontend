@@ -68,6 +68,15 @@ export async function getUserProfile(userId: string): Promise<ExtendedUser> {
   return res.json();
 }
 
+// ---------- Public User (unauth parts proxied via service) ----------
+export async function getPublicUser(userId: string) {
+  // Backend does not expose /users/<id> in provided routes.
+  // Fallback to privacy-filtered profile endpoint if suitable.
+  const res = await authFetch(`http://localhost:5000/profile/${userId}`);
+  if (!res.ok) throw new Error("Failed to fetch public user");
+  return res.json();
+}
+
 // ---------- Children ----------
 export async function addChild(payload: { name: string; dob: string }) {
   const res = await authFetch("http://localhost:5000/profile/me/children", {
@@ -76,6 +85,14 @@ export async function addChild(payload: { name: string; dob: string }) {
   });
   if (!res.ok) throw new Error("Failed to add child");
   return res.json();
+}
+
+export async function listChildren(): Promise<{ items: Child[] }> {
+  // Backend does not provide /profile/children; read from /profile/me
+  const res = await authFetch("http://localhost:5000/profile/me");
+  if (!res.ok) throw new Error("Failed to list children");
+  const me = await res.json();
+  return { items: me.children || [] };
 }
 
 export async function updateChild(childId: string, payload: Partial<Child>) {
@@ -92,6 +109,23 @@ export async function deleteChild(childId: string) {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete child");
+}
+
+// ---------- Milestones ----------
+export type Milestone = { id: string; name: string; typical: string; done: boolean };
+
+export async function listMilestones(childId: string): Promise<{ items: Milestone[] }> {
+  const res = await authFetch(`http://localhost:5000/milestones/${childId}`);
+  if (!res.ok) throw new Error("Failed to fetch milestones");
+  return res.json();
+}
+
+export async function toggleMilestone(childId: string, milestoneId: string) {
+  const res = await authFetch(`http://localhost:5000/milestones/${childId}/${milestoneId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ toggle: true }),
+  });
+  if (!res.ok) throw new Error("Failed to toggle milestone");
 }
 
 // ---------- Growth & Vaccines ----------

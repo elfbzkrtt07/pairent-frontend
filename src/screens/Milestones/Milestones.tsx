@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { listChildren, listMilestones, toggleMilestone } from "../../services/profile";
 import colors from "../../styles/colors";
 
 type Milestone = {
@@ -41,20 +41,8 @@ export default function Milestones() {
   useEffect(() => {
     const loadChildren = async () => {
       try {
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
-        const res = await fetch("http://localhost:5000/profile/children", {
-          headers: { Authorization: accessToken ? `Bearer ${accessToken}` : "" },
-        });
-
-        if (!res.ok) {
-          console.error("Failed to load children", res.status);
-          return;
-        }
-
-        const data = await res.json();
-        setChildren(data.items || []);
+        const data = await listChildren();
+        setChildren((data.items as any[]) || []);
 
         // default child if none selected
         if (!childId && data.items.length > 0) {
@@ -75,24 +63,8 @@ export default function Milestones() {
     const loadMilestones = async () => {
       try {
         setLoading(true);
-
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
-        const res = await fetch(
-          `http://localhost:5000/milestones/${childId}`,
-          {
-            headers: { Authorization: accessToken ? `Bearer ${accessToken}` : "" },
-          }
-        );
-
-        if (!res.ok) {
-          console.error("Failed to load milestones", res.status);
-          return;
-        }
-
-        const data = await res.json();
-        setMilestones(data.items || []);
+        const data = await listMilestones(childId);
+        setMilestones((data.items as any[]) || []);
       } catch (err) {
         console.error("Network error (milestones):", err);
       } finally {
@@ -109,17 +81,7 @@ export default function Milestones() {
     );
 
     try {
-      const session = await fetchAuthSession();
-      const accessToken = session.tokens?.accessToken?.toString();
-
-      await fetch(`http://localhost:5000/milestones/${childId}/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: accessToken ? `Bearer ${accessToken}` : "",
-        },
-        body: JSON.stringify({ toggle: true }),
-      });
+      await toggleMilestone(childId as string, id);
     } catch (err) {
       console.error("Failed to update milestone:", err);
     }

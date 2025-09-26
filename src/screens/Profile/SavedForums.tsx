@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { View, Text, ScrollView, ActivityIndicator, Pressable } from "react-native";
 import ForumCard, { ForumCardItem } from "../../components/ForumCard";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { listSavedQuestions, unsaveDiscussion } from "../../services/forum";
 import colors from "../../styles/colors";
 
 export default function SavedForums({ navigation }: any) {
@@ -12,23 +12,8 @@ export default function SavedForums({ navigation }: any) {
     const loadSaved = async () => {
       try {
         setLoading(true);
-
-        const session = await fetchAuthSession();
-        const token = session.tokens?.accessToken?.toString();
-
-        const res = await fetch("http://localhost:5000/questions/saved", {
-          method: "GET",
-          headers: { Authorization: token ? `Bearer ${token}` : "" },
-        });
-
-        if (!res.ok) {
-          console.error("Failed to load saved questions:", res.status);
-          setItems([]);
-          return;
-        }
-
-        const data = await res.json();
-        setItems(data.items || []);
+        const data = await listSavedQuestions();
+        setItems((data.items as any[]) || []);
       } catch (err) {
         console.error("Error fetching saved forums:", err);
         setItems([]);
@@ -42,13 +27,7 @@ export default function SavedForums({ navigation }: any) {
 
   const handleUnsave = async (qid: string) => {
     try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.accessToken?.toString();
-
-      await fetch(`http://localhost:5000/questions/${qid}/save`, {
-        method: "DELETE",
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
-      });
+      await unsaveDiscussion(qid);
 
       setItems((prev) => prev ? prev.filter((item) => item.qid !== qid) : prev);
     } catch (err) {

@@ -1,6 +1,8 @@
 // src/screens/Profile/ProfilePublic.tsx
 import { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { getPublicUser } from "../../services/profile";
+import { listQuestionsByUser } from "../../services/forum";
 
 type Child = { id: string; name: string; age: number };
 type Question = { qid: string; title: string; child_age_label: string; reply_count: number; likes: number };
@@ -21,15 +23,12 @@ export default function ProfilePublic({ route, navigation }: any) {
     if (!userId) return;
     (async () => {
       try {
-        /* not yet implemented in backend*/
-        const userRes = await fetch(`http://localhost:5000/users/${userId}`);
-        const qRes = await fetch(`http://localhost:5000/questions/by-user/${userId}?limit=3&sort=popular`);
-
-        if (userRes.ok) setProfile(await userRes.json());
-        if (qRes.ok) {
-          const data = await qRes.json();
-          setQuestions(data.items || []);
-        }
+        const [user, q] = await Promise.all([
+          getPublicUser(userId),
+          listQuestionsByUser(userId, { limit: 3, sort: "popular" }),
+        ]);
+        setProfile(user);
+        setQuestions((q.items as any[]) || []);
       } catch (err) {
         console.error("Failed to fetch public profile", err);
       } finally {

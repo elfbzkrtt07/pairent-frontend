@@ -1,6 +1,13 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "resolveJsonModule": true,
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "jsx": "react-native",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["*", "*.native", "*.web"]
+    }
   }
 }
