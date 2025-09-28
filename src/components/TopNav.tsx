@@ -1,9 +1,15 @@
-// src/components/TopNav.tsx
 import { View, Text, Pressable } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import colors from "../styles/colors";
 
-type ActiveTab = "home" | "forums" | "timers" | "milestones" | "profile" | undefined;
+type ActiveTab =
+  | "home"
+  | "forums"
+  | "timers"
+  | "milestones"
+  | "breakrooms"
+  | "profile"
+  | undefined;
 
 export default function TopNav({
   navigation,
@@ -18,7 +24,15 @@ export default function TopNav({
     user?.email?.slice(0, 1).toUpperCase() ??
     "?";
 
-  const Tab = ({ label, screen, keyName }: { label: string; screen: string; keyName: ActiveTab }) => (
+  const Tab = ({
+    label,
+    screen,
+    keyName,
+  }: {
+    label: string;
+    screen: string;
+    keyName: ActiveTab;
+  }) => (
     <Pressable onPress={() => navigation.navigate(screen)} hitSlop={8}>
       <Text
         style={{
@@ -50,20 +64,32 @@ export default function TopNav({
       </Pressable>
 
       {/* Center tabs */}
-      <View style={{ flexDirection: "row", flex: 1, justifyContent: "center", gap: 28 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          flex: 1,
+          justifyContent: "center",
+          gap: 28,
+        }}
+      >
         <Tab label="home"       screen="Home"       keyName="home" />
         <Tab label="forums"     screen="Forums"     keyName="forums" />
         <Tab label="timers"     screen="Timers"     keyName="timers" />
         <Tab label="milestones" screen="Milestones" keyName="milestones" />
+        <Tab label="breakrooms" screen="Breakroom"  keyName="breakrooms" />
       </View>
 
       {/* Profile button */}
       <Pressable
-        onPress={() => navigation.navigate("Profile")} 
+        onPress={() => navigation.navigate("Profile")}
         hitSlop={8}
         style={{
-          width: 32, height: 32, borderRadius: 16,
-          backgroundColor: "#dbeafe", alignItems: "center", justifyContent: "center",
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: "#dbeafe",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <Text style={{ fontWeight: "800" }}>{initial}</Text>

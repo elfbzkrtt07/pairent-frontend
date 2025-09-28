@@ -17,7 +17,7 @@ import Forums from "../screens/Forums/Forums";
 import ProfilePublic from "../screens/Profile/ProfilePublic";
 import SearchResults from "../screens/Home/SearchResults"; 
 import Bibi from "../screens/Bibi/Bibi";
-import Breakroom from "../screens/Breakrooms/Breakroom";
+import Breakroom from "../screens/Breakrooms/Breakrooms";
 import MyQuestions from "../screens/Profile/MyQuestions";
 import SavedForums from "../screens/Profile/SavedForums";
 
@@ -50,7 +50,7 @@ const linking = {
 
 function activeTabFor(
   routeName: string
-): "home" | "forums" | "timers" | "milestones" | undefined {
+): "home" | "forums" | "timers" | "milestones" | "breakrooms" | undefined {
   switch (routeName) {
     case "Home":
       return "home";
@@ -63,6 +63,8 @@ function activeTabFor(
       return "timers";
     case "Milestones":
       return "milestones";
+    case "Breakroom":
+      return "breakrooms";
     default:
       return undefined; 
   }
