@@ -1,33 +1,34 @@
-// src/screens/Home/NewQuestion.tsx
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert } from "react-native";
-import { createQuestion } from "../../services/forum";
+import { View, Text, TextInput, Pressable, Alert, ActivityIndicator } from "react-native";
 import colors from "../../styles/colors";
 
-export default function NewQuestion({ navigation }: any) {
-  const [title, setTitle] = useState("");
+export default function CreateBreakroom({ navigation }: any) {
+  const [roomName, setRoomName] = useState("");
   const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      Alert.alert("Missing title", "Please enter a question title.");
+  const handleCreate = async () => {
+    if (!roomName.trim()) {
+      Alert.alert("Missing name", "Please enter a breakroom name.");
       return;
     }
 
     try {
-      const data = await createQuestion({
-        title,
-        body: description,
-        tags: [],
-        age: 2,
-      });
-      console.log("Saved question:", data);
+      setLoading(true);
+      console.log("Creating breakroom:", { roomName, description });
 
-      Alert.alert("Success", "Your question has been posted!");
-      navigation.goBack();
+      // TODO: Replace with backend call to create breakroom
+      Alert.alert("Success", `Breakroom "${roomName}" created!`);
+
+      // Simulate waiting before going back
+      setTimeout(() => {
+        setLoading(false);
+        navigation.goBack();
+      }, 1500);
     } catch (err) {
       console.error("Network error:", err);
       Alert.alert("Error", "Something went wrong.");
+      setLoading(false);
     }
   };
 
@@ -41,13 +42,14 @@ export default function NewQuestion({ navigation }: any) {
           color: colors.aqua.text,
         }}
       >
-        NEW QUESTION
+        CREATE BREAKROOM
       </Text>
 
+      {/* Breakroom Name */}
       <TextInput
-        value={title}
-        onChangeText={setTitle}
-        placeholder="Enter your question"
+        value={roomName}
+        onChangeText={setRoomName}
+        placeholder="Enter breakroom name"
         placeholderTextColor={colors.base.text}
         style={{
           backgroundColor: colors.aqua.light,
@@ -60,10 +62,11 @@ export default function NewQuestion({ navigation }: any) {
         }}
       />
 
+      {/* Description */}
       <TextInput
         value={description}
         onChangeText={setDescription}
-        placeholder="Add details"
+        placeholder="Add description"
         placeholderTextColor={colors.base.text}
         multiline
         style={{
@@ -78,25 +81,33 @@ export default function NewQuestion({ navigation }: any) {
         }}
       />
 
+      {/* Submit Button */}
       <Pressable
-        onPress={handleSubmit}
+        onPress={handleCreate}
+        disabled={loading}
         style={{
-          backgroundColor: colors.aqua.dark,
+          backgroundColor: loading ? colors.base.muted : colors.aqua.dark,
           paddingVertical: 14,
           borderRadius: 8,
           alignItems: "center",
           marginTop: 20,
+          flexDirection: "row",
+          justifyContent: "center",
         }}
       >
-        <Text
-          style={{
-            color: "#fff",
-            fontSize: 16,
-            fontWeight: "700",
-          }}
-        >
-          Submit Question
-        </Text>
+        {loading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text
+            style={{
+              color: "#fff",
+              fontSize: 16,
+              fontWeight: "700",
+            }}
+          >
+            Create Breakroom
+          </Text>
+        )}
       </Pressable>
     </View>
   );

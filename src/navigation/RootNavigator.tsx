@@ -20,6 +20,7 @@ import Bibi from "../screens/Bibi/Bibi";
 import Breakroom from "../screens/Breakrooms/Breakrooms";
 import MyQuestions from "../screens/Profile/MyQuestions";
 import SavedForums from "../screens/Profile/SavedForums";
+import CreateBreakroom from "../screens/Breakrooms/CreateBreakroom";
 
 import TopNav from "../components/TopNav";
 
@@ -103,6 +104,7 @@ export default function RootNavigator() {
           <Stack.Screen name="Bibi" component={Bibi} />
           <Stack.Screen name="Breakroom" component={Breakroom} />
           <Stack.Screen name="MyQuestions" component={MyQuestions} />
+          <Stack.Screen name="CreateBreakroom" component={CreateBreakroom} />
           <Stack.Screen name="SavedForums" component={SavedForums} />
         </Stack.Navigator>
       ) : (

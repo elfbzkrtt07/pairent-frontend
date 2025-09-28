@@ -117,7 +117,7 @@ export default function Milestones() {
                   textAlign: "center",
                 }}
               >
-                Milestone Tracker
+                MILESTONE TRACKER
               </Text>
               <Text
                 style={{
