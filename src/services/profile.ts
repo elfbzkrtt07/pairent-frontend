@@ -36,6 +36,7 @@ export type ExtendedUser = {
   dob?: string;
 };
 
+const API_URL = "http://127.0.0.1:5000";
 
 // ---------- Helpers ----------
 async function authFetch(url: string, options: RequestInit = {}) {
@@ -53,13 +54,13 @@ async function authFetch(url: string, options: RequestInit = {}) {
 
 // ---------- Profile ----------
 export async function getMyProfile(): Promise<ExtendedUser> {
-  const res = await authFetch("http://localhost:5000/profile/me");
+  const res = await authFetch(`${API_URL}/profile/me`);
   if (!res.ok) throw new Error("Failed to fetch profile");
   return res.json();
 }
 
 export async function updateMyProfile(payload: Partial<ExtendedUser>) {
-  const res = await authFetch("http://localhost:5000/profile/me", {
+  const res = await authFetch(`${API_URL}/profile/me`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
@@ -68,21 +69,21 @@ export async function updateMyProfile(payload: Partial<ExtendedUser>) {
 }
 
 export async function getUserProfile(userId: string): Promise<ExtendedUser> {
-  const res = await authFetch(`http://localhost:5000/profile/${userId}`);
+  const res = await authFetch(`${API_URL}/profile/${userId}`);
   if (!res.ok) throw new Error("Failed to fetch user profile");
   return res.json();
 }
 
 // ---------- Public User ----------
 export async function getPublicUser(userId: string) {
-  const res = await authFetch(`http://localhost:5000/profile/${userId}`);
+  const res = await authFetch(`${API_URL}/profile/${userId}`);
   if (!res.ok) throw new Error("Failed to fetch public user");
   return res.json();
 }
 
 // ---------- Children ----------
 export async function addChild(payload: { name: string; dob: string }) {
-  const res = await authFetch("http://localhost:5000/profile/me/children", {
+  const res = await authFetch(`${API_URL}/profile/me/children`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -91,14 +92,14 @@ export async function addChild(payload: { name: string; dob: string }) {
 }
 
 export async function listChildren(): Promise<{ items: Child[] }> {
-  const res = await authFetch("http://localhost:5000/profile/me");
+  const res = await authFetch(`${API_URL}/profile/me`);
   if (!res.ok) throw new Error("Failed to list children");
   const me = await res.json();
   return { items: me.children || [] };
 }
 
 export async function updateChild(childId: string, payload: Partial<Child>) {
-  const res = await authFetch(`http://localhost:5000/profile/me/children/${childId}`, {
+  const res = await authFetch(`${API_URL}/profile/me/children/${childId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
@@ -107,7 +108,7 @@ export async function updateChild(childId: string, payload: Partial<Child>) {
 }
 
 export async function deleteChild(childId: string) {
-  const res = await authFetch(`http://localhost:5000/profile/me/children/${childId}`, {
+  const res = await authFetch(`${API_URL}/profile/me/children/${childId}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete child");
@@ -117,13 +118,13 @@ export async function deleteChild(childId: string) {
 export type Milestone = { id: string; name: string; typical: string; done: boolean };
 
 export async function listMilestones(childId: string): Promise<{ items: Milestone[] }> {
-  const res = await authFetch(`http://localhost:5000/milestones/${childId}`);
+  const res = await authFetch(`${API_URL}/milestones/${childId}`);
   if (!res.ok) throw new Error("Failed to fetch milestones");
   return res.json();
 }
 
 export async function toggleMilestone(childId: string, milestoneId: string) {
-  const res = await authFetch(`http://localhost:5000/milestones/${childId}/${milestoneId}`, {
+  const res = await authFetch(`${API_URL}/milestones/${childId}/${milestoneId}`, {
     method: "PATCH",
     body: JSON.stringify({ toggle: true }),
   });
@@ -132,7 +133,7 @@ export async function toggleMilestone(childId: string, milestoneId: string) {
 
 // ---------- Growth ----------
 export async function addGrowth(childId: string, payload: GrowthRecord) {
-  const res = await authFetch(`http://localhost:5000/profile/me/children/${childId}/growth`, {
+  const res = await authFetch(`${API_URL}/profile/me/children/${childId}/growth`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -141,14 +142,14 @@ export async function addGrowth(childId: string, payload: GrowthRecord) {
 }
 
 export async function listGrowth(childId: string): Promise<{ items: GrowthRecord[] }> {
-  const res = await authFetch(`http://localhost:5000/profile/me/children/${childId}/growth`);
+  const res = await authFetch(`${API_URL}/profile/me/children/${childId}/growth`);
   if (!res.ok) throw new Error("Failed to list growth records");
   return res.json();
 }
 
 // ---------- Vaccines ----------
 export async function addVaccine(childId: string, payload: VaccineRecord) {
-  const res = await authFetch(`http://localhost:5000/profile/me/children/${childId}/vaccine`, {
+  const res = await authFetch(`${API_URL}/profile/me/children/${childId}/vaccine`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -157,7 +158,7 @@ export async function addVaccine(childId: string, payload: VaccineRecord) {
 }
 
 export async function listVaccines(childId: string): Promise<{ items: VaccineRecord[] }> {
-  const res = await authFetch(`http://localhost:5000/profile/me/children/${childId}/vaccine`);
+  const res = await authFetch(`${API_URL}/profile/me/children/${childId}/vaccine`);
   if (!res.ok) throw new Error("Failed to list vaccine records");
   return res.json();
 }
@@ -165,7 +166,7 @@ export async function listVaccines(childId: string): Promise<{ items: VaccineRec
 
 // ---------- Friends ----------
 export async function sendFriendRequest(userId: string) {
-  const res = await authFetch(`http://localhost:5000/friends/request/${userId}`, {
+  const res = await authFetch(`${API_URL}/friends/request/${userId}`, {
     method: "POST",
   });
   if (!res.ok) throw new Error("Failed to send friend request");
@@ -173,7 +174,7 @@ export async function sendFriendRequest(userId: string) {
 }
 
 export async function acceptFriendRequest(userId: string) {
-  const res = await authFetch(`http://localhost:5000/friends/accept/${userId}`, {
+  const res = await authFetch(`${API_URL}/friends/accept/${userId}`, {
     method: "POST",
   });
   if (!res.ok) throw new Error("Failed to accept friend request");
@@ -181,13 +182,13 @@ export async function acceptFriendRequest(userId: string) {
 }
 
 export async function listFriendRequests() {
-  const res = await authFetch("http://localhost:5000/friends/requests");
+  const res = await authFetch(`${API_URL}/friends/requests`);
   if (!res.ok) throw new Error("Failed to list friend requests");
   return res.json();
 }
 
 export async function removeFriend(userId: string) {
-  const res = await authFetch(`http://localhost:5000/friends/${userId}`, {
+  const res = await authFetch(`${API_URL}/friends/${userId}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to remove friend");

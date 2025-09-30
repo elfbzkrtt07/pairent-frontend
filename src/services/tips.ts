@@ -6,7 +6,7 @@ export async function getDailyTip(): Promise<{ text: string }> {
   try {
     const session = await fetchAuthSession();
     const token = session.tokens?.accessToken?.toString();
-    const res = await fetch("http://localhost:5000/bibi/daily-tip", {
+    const res = await fetch("http://127.0.0.1:5000/bibi/daily-tip", {
       headers: { Authorization: token ? `Bearer ${token}` : "" },
     });
     if (res.ok) {
