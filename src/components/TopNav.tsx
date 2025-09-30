@@ -8,6 +8,7 @@ type ActiveTab =
   | "timers"
   | "milestones"
   | "breakrooms"
+  | "bibi"
   | "profile"
   | undefined;
 
@@ -77,6 +78,7 @@ export default function TopNav({
         <Tab label="timers"     screen="Timers"     keyName="timers" />
         <Tab label="milestones" screen="Milestones" keyName="milestones" />
         <Tab label="breakrooms" screen="Breakroom"  keyName="breakrooms" />
+        <Tab label="bibi"       screen="Bibi"       keyName="bibi" />
       </View>
 
       {/* Profile button */}

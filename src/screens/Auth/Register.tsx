@@ -1,3 +1,4 @@
+// src/screens/Auth/Register.tsx
 import { useMemo, useState } from "react";
 import {
   View,
@@ -14,7 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useAuth } from "../../context/AuthContext";
-import colors from "../../styles/colors";   
+import colors from "../../styles/colors";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const toYMD = (d: Date) =>
@@ -23,7 +24,6 @@ const toYMD = (d: Date) =>
 export default function Register({ navigation }: any) {
   const { signUp } = useAuth();
 
-  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
@@ -57,9 +57,30 @@ export default function Register({ navigation }: any) {
   const onSubmit = async () => {
     setErr("");
     try {
-      await signUp(email.trim(), pwd, name.trim(), dobStr, username.trim());
+      // 1. Cognito signup
+      await signUp(email.trim(), pwd, name.trim(), dobStr);
+
+      // 2. Send to backend
+      const res = await fetch("http://localhost:5000/profile/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          dob: dobStr,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save user to backend");
+      }
+
+      // 3. Navigate to confirm page
       navigation.navigate("ConfirmSignUp", { email: email.trim() });
     } catch (e: any) {
+      console.error("Registration error:", e);
       setErr(e?.message ?? "Registration failed");
     }
   };
@@ -138,15 +159,6 @@ export default function Register({ navigation }: any) {
               style={[field]}
             />
 
-            <Text style={{ color: colors.base.text, fontWeight: "500" }}>Username</Text>
-            <TextInput
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Enter your username"
-              autoCapitalize="none"
-              style={[field]}
-            />
-
             <Text style={{ color: colors.base.text, fontWeight: "500" }}>Email</Text>
             <TextInput
               value={email}
@@ -187,7 +199,9 @@ export default function Register({ navigation }: any) {
                   min={minDateStr}
                   max={maxDateStr}
                   onChange={(e: any) => {
-                    const [yy, mm, dd] = e.target.value.split("-").map((s: string) => parseInt(s, 10));
+                    const [yy, mm, dd] = e.target.value
+                      .split("-")
+                      .map((s: string) => parseInt(s, 10));
                     if (yy && mm && dd) setDob(new Date(yy, mm - 1, dd));
                   }}
                   style={{
@@ -235,7 +249,13 @@ export default function Register({ navigation }: any) {
 
                 {Platform.OS === "ios" && (
                   <Modal visible={showPicker} transparent animationType="slide">
-                    <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.3)" }}>
+                    <View
+                      style={{
+                        flex: 1,
+                        justifyContent: "flex-end",
+                        backgroundColor: "rgba(0,0,0,0.3)",
+                      }}
+                    >
                       <View
                         style={{
                           backgroundColor: colors.base.background,
@@ -244,7 +264,13 @@ export default function Register({ navigation }: any) {
                           borderTopRightRadius: 12,
                         }}
                       >
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            marginBottom: 8,
+                          }}
+                        >
                           <Pressable onPress={() => setShowPicker(false)}>
                             <Text style={{ color: "crimson", fontWeight: "600" }}>Cancel</Text>
                           </Pressable>
@@ -281,7 +307,9 @@ export default function Register({ navigation }: any) {
                 marginTop: 8,
               }}
             >
-              <Text style={{ color: colors.base.background, fontWeight: "600" }}>Create Account</Text>
+              <Text style={{ color: colors.base.background, fontWeight: "600" }}>
+                Create Account
+              </Text>
             </Pressable>
           </View>
 
@@ -289,7 +317,8 @@ export default function Register({ navigation }: any) {
 
           <Pressable onPress={() => navigation.navigate("Login")}>
             <Text style={{ textAlign: "center", color: colors.base.text }}>
-              Already have an account? <Text style={{ color: colors.aqua.dark }}>Login</Text>
+              Already have an account?{" "}
+              <Text style={{ color: colors.aqua.dark }}>Login</Text>
             </Text>
           </Pressable>
         </ScrollView>

@@ -74,17 +74,25 @@ export default function Home({ navigation }: any) {
     return rows.slice(0, 2);
   }, [rows]);
 
+  // FIXED: toggleLike only affects the clicked question
   const toggleLike = (qid: string) => {
     setRows((prev) =>
       prev
-        ? prev.map((q) =>
-            q.qid === qid
-              ? { ...q, likes: likedMap[qid] ? q.likes - 1 : q.likes + 1 }
-              : q
-          )
+        ? prev.map((q) => {
+            if (q.qid !== qid) return q;
+            const currentlyLiked = likedMap[qid] ?? false;
+            return {
+              ...q,
+              likes: currentlyLiked ? q.likes - 1 : q.likes + 1,
+            };
+          })
         : prev
     );
-    setLikedMap((prev) => ({ ...prev, [qid]: !prev[qid] }));
+
+    setLikedMap((prev) => ({
+      ...prev,
+      [qid]: !(prev[qid] ?? false),
+    }));
   };
 
   const goSearch = () => {
@@ -94,7 +102,6 @@ export default function Home({ navigation }: any) {
   };
 
   return (
-    
     <View style={{ flex: 1, backgroundColor: colors.base.background }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <View
@@ -145,7 +152,6 @@ export default function Home({ navigation }: any) {
                   justifyContent: "center",
                 }}
               >
-                
                 <Text style={{ fontWeight: "700", color: colors.aqua.text }}>
                   SEARCH
                 </Text>
@@ -292,9 +298,7 @@ export default function Home({ navigation }: any) {
                   </View>
 
                   <View style={{ marginLeft: "auto", flexDirection: "row", gap: 16 }}>
-                    <Text style={{ color: colors.base.text }}>
-                      💬 {q.reply_count}
-                    </Text>
+                    <Text style={{ color: colors.base.text }}>💬 {q.reply_count}</Text>
                     <Pressable
                       onPress={() => toggleLike(q.qid)}
                       style={{ flexDirection: "row", alignItems: "center" }}
@@ -334,6 +338,7 @@ export default function Home({ navigation }: any) {
                 </Pressable>
               </View>
             ))}
+
             {/* Daily tip from mock service */}
             {dailyTip ? (
               <View
@@ -372,7 +377,11 @@ export default function Home({ navigation }: any) {
                   {dailyTip}
                 </Text>
                 <Pressable
-                  onPress={() => navigation.navigate("Bibi")}
+                  onPress={() =>
+                    navigation.navigate("Bibi", {
+                      preset: "Hi Bibi, can you give me a parenting tip for today?",
+                    })
+                  }
                   style={{
                     alignSelf: "flex-start",
                     backgroundColor: colors.peach.dark,
@@ -406,24 +415,8 @@ export default function Home({ navigation }: any) {
                 }}
               >
                 ACTIVE BREAKROOMS
+                {/* Connect to backend and get the active breakeooms with HTTP endpoints and API calls */}
               </Text>
-              
-
-              {/* Breakrooms list will be populated from backend (Agora) later */}
-
-              <Pressable
-                onPress={() => navigation.navigate("Bibi")}
-                style={{
-                  marginTop: 8,
-                  alignSelf: "flex-start",
-                  backgroundColor: colors.peach.dark,
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  borderRadius: 8,
-                }}
-              >
-                <Text style={{ color: "white", fontWeight: "700" }}>Ask Bibi</Text>
-              </Pressable>
             </View>
           </View>
         </View>

@@ -1,7 +1,8 @@
 // src/components/ForumCard.tsx
 import { useState } from "react";
 import { View, Text, Pressable } from "react-native";
-import colors from "../styles/colors"; // ✅ import your shared colors
+import colors from "../styles/colors";
+import { likeQuestion } from "../services/forum"; 
 
 export type ForumCardItem = {
   qid: string;
@@ -16,19 +17,38 @@ export type ForumCardItem = {
 export default function ForumCard({
   item,
   onPress,
-  onLike,
   onReplyPress,
 }: {
   item: ForumCardItem;
   onPress: () => void;
-  onLike?: () => void;
   onReplyPress?: () => void;
 }) {
   const [liked, setLiked] = useState(false);
+  const [likes, setLikes] = useState(item.likes);
+  const [loading, setLoading] = useState(false);
+
+  const handleLike = async () => {
+    if (loading) return;
+    try {
+      setLoading(true);
+      const newLike = !liked;
+      setLiked(newLike);
+      setLikes((prev) => prev + (newLike ? 1 : -1));
+
+      // call backend
+      const updatedLikes = await likeQuestion(item.qid, newLike);
+      setLikes(updatedLikes);
+    } catch (err) {
+      console.error("Failed to toggle like:", err);
+      setLiked((prev) => !prev);
+      setLikes(item.likes);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <Pressable
-      onPress={onPress}
+    <View
       style={{
         backgroundColor: colors.peach.light,
         borderRadius: 12,
@@ -38,17 +58,19 @@ export default function ForumCard({
         borderColor: "transparent",
       }}
     >
-      {/* 🔹 Title darker */}
-      <Text
-        style={{
-          fontSize: 20,
-          fontWeight: "700",
-          marginBottom: 12,
-          color: colors.base.text, // DARKER title
-        }}
-      >
-        {item.title}
-      </Text>
+      {/* Make title pressable */}
+      <Pressable onPress={onPress}>
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: "700",
+            marginBottom: 12,
+            color: colors.base.text,
+          }}
+        >
+          {item.title}
+        </Text>
+      </Pressable>
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         {/* Avatar */}
@@ -89,8 +111,9 @@ export default function ForumCard({
 
         {/* metrics */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
+          {/* Reply button */}
           <Pressable
-            onPress={onReplyPress ? onReplyPress : onPress}
+            onPress={onReplyPress ?? onPress}
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -107,17 +130,17 @@ export default function ForumCard({
             </Text>
           </Pressable>
 
+          {/* Like button */}
           <Pressable
-            onPress={() => {
-              setLiked((v) => !v);
-              if (onLike) onLike();
-            }}
+            onPress={handleLike}
+            disabled={loading}
             style={{
               flexDirection: "row",
               alignItems: "center",
               paddingHorizontal: 8,
               paddingVertical: 4,
               borderRadius: 6,
+              opacity: loading ? 0.6 : 1,
             }}
           >
             <Text style={{ fontSize: 16 }}>
@@ -126,11 +149,11 @@ export default function ForumCard({
             <Text
               style={{ fontSize: 16, marginLeft: 4, color: colors.base.text }}
             >
-              {item.likes + (liked ? 1 : 0)}
+              {likes}
             </Text>
           </Pressable>
         </View>
       </View>
-    </Pressable>
+    </View>
   );
 }

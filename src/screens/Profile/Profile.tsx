@@ -8,15 +8,20 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   TextInput,
+  Modal,
+  TouchableOpacity,
+  Platform,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useAuth } from "../../context/AuthContext";
 import { updatePassword } from "aws-amplify/auth";
 import colors from "../../styles/colors";
-import { ExtendedUser, getMyProfile, updateMyProfile } from "../../services/profile";
+import { ExtendedUser, getMyProfile, updateMyProfile, addChild } from "../../services/profile";
 import { listMyQuestions } from "../../services/forum";
 
 type Question = { qid: string; title: string; reply_count: number; likes: number };
+type PrivacyLevel = "public" | "private" | "friends";
 
 const Card = ({ children, style }: { children: React.ReactNode; style?: object }) => (
   <View
@@ -36,6 +41,11 @@ const Card = ({ children, style }: { children: React.ReactNode; style?: object }
   </View>
 );
 
+// helpers
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const toYMD = (d: Date) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
 export default function Profile({ navigation }: any) {
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
@@ -43,7 +53,8 @@ export default function Profile({ navigation }: any) {
   const { user, signOut } = useAuth();
   const [extended, setExtended] = useState<ExtendedUser | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingQuestions, setLoadingQuestions] = useState(true);
 
   // Edit state
   const [editing, setEditing] = useState(false);
@@ -57,6 +68,27 @@ export default function Profile({ navigation }: any) {
   const [newPass, setNewPass] = useState("");
   const [savingPass, setSavingPass] = useState(false);
 
+  const [privacyDraft, setPrivacyDraft] = useState<Record<string, PrivacyLevel>>({});
+
+  // Add child state
+  const [addingChild, setAddingChild] = useState(false);
+  const [childName, setChildName] = useState("");
+  const [childDob, setChildDob] = useState(new Date(2020, 0, 1));
+  const [showDobPicker, setShowDobPicker] = useState(false);
+  const [savingChild, setSavingChild] = useState(false);
+
+  const childDobStr = toYMD(childDob);
+
+  const handleDobChange = (event: DateTimePickerEvent, selected?: Date) => {
+    if (Platform.OS === "android") {
+      if (event.type === "set" && selected) setChildDob(selected);
+      setShowDobPicker(false);
+      return;
+    }
+    if (selected) setChildDob(selected);
+  };
+
+  // 🔹 Fetch profile
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -67,17 +99,30 @@ export default function Profile({ navigation }: any) {
         setEmailDraft(profile.email ?? user.email ?? "");
         setDobDraft(profile.dob ?? "");
         setBioDraft(profile.bio ?? "");
-
-        // Use forum service for user's questions
-        const data = await listMyQuestions({ limit: 5, sort: "new" });
-        setQuestions((data.items as any[]) || []);
+        setPrivacyDraft(profile.privacy || {});
       } catch (e) {
         console.error("Failed to load profile:", e);
       } finally {
-        setLoading(false);
+        setLoadingProfile(false);
       }
     })();
   }, [user]);
+
+  // Fetch questions
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingQuestions(true);
+        const data = await listMyQuestions({});
+        setQuestions((data.items as Question[]) || []);
+      } catch (err) {
+        console.error("Error fetching my questions:", err);
+        setQuestions([]);
+      } finally {
+        setLoadingQuestions(false);
+      }
+    })();
+  }, []);
 
   const handleSaveProfile = async () => {
     try {
@@ -87,11 +132,30 @@ export default function Profile({ navigation }: any) {
         email: emailDraft,
         dob: dobDraft,
         bio: bioDraft,
+        privacy: privacyDraft,
       });
       setExtended(updated);
       setEditing(false);
     } catch (e) {
       console.error("Failed to save profile:", e);
+    }
+  };
+
+  const handleSaveChild = async () => {
+    try {
+      setSavingChild(true);
+      const newChild = await addChild({ name: childName, dob: childDobStr });
+      setExtended((prev) =>
+        prev ? { ...prev, children: [...(prev.children || []), newChild] } : prev
+      );
+      setChildName("");
+      setChildDob(new Date(2020, 0, 1));
+      setAddingChild(false);
+    } catch (e) {
+      console.error("Failed to add child:", e);
+      alert("Failed to add child");
+    } finally {
+      setSavingChild(false);
     }
   };
 
@@ -117,7 +181,7 @@ export default function Profile({ navigation }: any) {
     );
   }
 
-  if (loading) {
+  if (loadingProfile && loadingQuestions) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator size="large" color={colors.aqua.dark} />
@@ -145,7 +209,7 @@ export default function Profile({ navigation }: any) {
           minHeight: 250,
         }}
       >
-        {/* Left column: Avatar + info */}
+        {/* Left column */}
         <View style={{ alignItems: "flex-start", width: 260 }}>
           <View
             style={{
@@ -230,47 +294,47 @@ export default function Profile({ navigation }: any) {
               <Pressable
                 onPress={handleSaveProfile}
                 style={{
-                  backgroundColor: colors.aqua.dark,
-                  paddingVertical: 6,
-                  paddingHorizontal: 14,
-                  borderRadius: 6,
+                  backgroundColor: colors.aqua.normal,
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
                 }}
               >
-                <Text style={{ color: "white", fontWeight: "700" }}>Save</Text>
+                <Text style={{ color: colors.aqua.text, fontWeight: "700" }}>Save</Text>
               </Pressable>
             </>
           ) : (
             <>
-              <Text style={{ fontSize: 18, fontWeight: "700", color: colors.base.text }}>
+              <Text style={{ fontSize: 20, fontWeight: "800", color: colors.base.text }}>
                 {extended?.name ?? nameDraft}
               </Text>
-              <Text style={{ color: colors.base.muted, fontSize: 13, marginBottom: 4 }}>
+              <Text style={{ color: colors.base.muted, fontSize: 14, marginBottom: 4 }}>
                 {extended?.email ?? emailDraft}
               </Text>
-              <Text style={{ color: colors.base.muted, fontSize: 13, marginBottom: 8 }}>
+              <Text style={{ color: colors.base.muted, fontSize: 14, marginBottom: 8 }}>
                 {extended?.dob ?? dobDraft}
               </Text>
-              <Text style={{ color: colors.base.text, marginBottom: 12 }}>
+              <Text style={{ color: colors.base.text, marginBottom: 12, fontSize: 15 }}>
                 {extended?.bio ?? bioDraft}
               </Text>
               <Pressable
                 onPress={() => setEditing(true)}
                 style={{
-                  backgroundColor: colors.aqua.dark,
-                  paddingVertical: 6,
-                  paddingHorizontal: 14,
-                  borderRadius: 6,
+                  backgroundColor: colors.aqua.normal,
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
                 }}
               >
-                <Text style={{ color: "white", fontWeight: "700" }}>Edit Profile</Text>
+                <Text style={{ color: colors.aqua.text, fontWeight: "700" }}>Edit Profile</Text>
               </Pressable>
             </>
           )}
         </View>
 
-        {/* Right column: Change Password + Signout */}
+        {/* Right column */}
         <View style={{ flex: 1, alignItems: "flex-end", gap: 12 }}>
-          {/* Change password box */}
+          {/* Change password */}
           <View
             style={{
               width: 260,
@@ -281,7 +345,9 @@ export default function Profile({ navigation }: any) {
               borderColor: colors.base.border,
             }}
           >
-            <Text style={{ fontWeight: "700", marginBottom: 6 }}>Change Password</Text>
+            <Text style={{ fontWeight: "700", marginBottom: 6, fontSize: 16 }}>
+              Change Password
+            </Text>
             <TextInput
               secureTextEntry
               value={oldPass}
@@ -315,7 +381,7 @@ export default function Profile({ navigation }: any) {
               onPress={handleChangePassword}
               style={{
                 backgroundColor: colors.peach.dark,
-                paddingVertical: 6,
+                paddingVertical: 8,
                 borderRadius: 6,
                 alignItems: "center",
                 opacity: savingPass ? 0.6 : 1,
@@ -334,7 +400,7 @@ export default function Profile({ navigation }: any) {
               navigation.reset({ index: 0, routes: [{ name: "Login" }] });
             }}
             style={{
-              backgroundColor: "crimson",
+              backgroundColor: colors.peach.dark,
               paddingVertical: 8,
               paddingHorizontal: 16,
               borderRadius: 6,
@@ -348,9 +414,183 @@ export default function Profile({ navigation }: any) {
       {/* Second row: Children + Privacy */}
       <View style={{ flexDirection: isWide ? "row" : "column", gap: 16 }}>
         <Card>
-          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8, color: colors.base.text }}>
-            Children
-          </Text>
+          {/* Children header with + button */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+            <Text
+              style={{ fontSize: 20, fontWeight: "800", flex: 1, color: colors.base.text }}
+            >
+              Children
+            </Text>
+            <Pressable
+              onPress={() => setAddingChild((p) => !p)}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: colors.aqua.normal,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: colors.aqua.dark, fontSize: 20, fontWeight: "700" }}>+</Text>
+            </Pressable>
+          </View>
+
+          {/* Inline Add Child Box */}
+          {addingChild && (
+            <View
+              style={{
+                backgroundColor: colors.peach.light,
+                padding: 12,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: colors.base.border,
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{ fontWeight: "700", marginBottom: 6, fontSize: 16 }}>Add Child</Text>
+              <TextInput
+                value={childName}
+                onChangeText={setChildName}
+                placeholder="Child name"
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.base.border,
+                  borderRadius: 6,
+                  padding: 8,
+                  backgroundColor: "white",
+                  marginBottom: 6,
+                }}
+              />
+
+              <Text style={{ fontWeight: "500", marginBottom: 4, fontSize: 15 }}>Date of Birth</Text>
+
+              {Platform.OS === "web" ? (
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.base.border,
+                    borderRadius: 6,
+                    backgroundColor: colors.base.background,
+                    height: 44,
+                    justifyContent: "center",
+                    paddingHorizontal: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  {/* @ts-ignore */}
+                  <input
+                    type="date"
+                    value={childDobStr}
+                    max={toYMD(new Date())}
+                    onChange={(e: any) => {
+                      const [yy, mm, dd] = e.target.value.split("-").map((s: string) => parseInt(s, 10));
+                      if (yy && mm && dd) setChildDob(new Date(yy, mm - 1, dd));
+                    }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      border: "none",
+                      outline: "none",
+                      backgroundColor: "transparent",
+                      fontSize: 15,
+                      color: colors.base.text,
+                    }}
+                  />
+                </View>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => setShowDobPicker(true)}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: colors.base.border,
+                      borderRadius: 6,
+                      backgroundColor: "white",
+                      paddingHorizontal: 12,
+                      height: 44,
+                      justifyContent: "center",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text style={{ color: colors.base.text }}>{childDobStr}</Text>
+                  </TouchableOpacity>
+
+                  {Platform.OS === "android" && showDobPicker && (
+                    <DateTimePicker
+                      value={childDob}
+                      mode="date"
+                      display="calendar"
+                      maximumDate={new Date()}
+                      onChange={handleDobChange}
+                    />
+                  )}
+
+                  {Platform.OS === "ios" && (
+                    <Modal visible={showDobPicker} transparent animationType="slide">
+                      <View
+                        style={{
+                          flex: 1,
+                          justifyContent: "flex-end",
+                          backgroundColor: "rgba(0,0,0,0.3)",
+                        }}
+                      >
+                        <View
+                          style={{
+                            backgroundColor: colors.base.background,
+                            padding: 12,
+                            borderTopLeftRadius: 12,
+                            borderTopRightRadius: 12,
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              marginBottom: 8,
+                            }}
+                          >
+                            <Pressable onPress={() => setShowDobPicker(false)}>
+                              <Text style={{ color: "crimson", fontWeight: "600" }}>Cancel</Text>
+                            </Pressable>
+                            <Pressable onPress={() => setShowDobPicker(false)}>
+                              <Text style={{ color: colors.base.text, fontWeight: "700" }}>Done</Text>
+                            </Pressable>
+                          </View>
+                          <DateTimePicker
+                            value={childDob}
+                            mode="date"
+                            display="spinner"
+                            maximumDate={new Date()}
+                            onChange={handleDobChange}
+                            style={{ backgroundColor: colors.base.background }}
+                          />
+                        </View>
+                      </View>
+                    </Modal>
+                  )}
+                </>
+              )}
+
+              <Pressable
+                disabled={savingChild}
+                onPress={handleSaveChild}
+                style={{
+                  backgroundColor: colors.peach.dark,
+                  paddingVertical: 8,
+                  borderRadius: 6,
+                  alignItems: "center",
+                  opacity: savingChild ? 0.6 : 1,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "700" }}>
+                  {savingChild ? "Saving..." : "Save Child"}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
           {extended?.children?.length ? (
             extended.children.map((c, i) => (
               <View
@@ -390,36 +630,50 @@ export default function Profile({ navigation }: any) {
               </View>
             ))
           ) : (
-            <Text style={{ color: colors.base.muted }}>No children</Text>
+            <Text style={{ color: colors.base.muted, fontSize: 14 }}>No children</Text>
           )}
         </Card>
 
+        {/* Privacy settings */}
         <Card>
-          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8, color: colors.base.text }}>
+          <Text
+            style={{ fontSize: 20, fontWeight: "800", marginBottom: 8, color: colors.base.text }}
+          >
             Privacy Settings
           </Text>
-          {[
-            "Full Name",
-            "Email",
-            "Date of Birth",
-            "Children Names",
-            "Children Ages",
-            "Questions",
-            "Likes",
-            "Replies",
-          ].map((field) => (
+          {Object.entries({
+            name: "Full Name",
+            email: "Email",
+            dob: "Date of Birth",
+            children_names: "Children Names",
+            children_ages: "Children Ages",
+            questions: "Questions",
+            likes: "Likes",
+            replies: "Replies",
+          }).map(([key, label]) => (
             <View
-              key={field}
+              key={key}
               style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}
             >
-              <Text style={{ flex: 1, color: colors.base.text }}>{field}:</Text>
+              <Text style={{ flex: 1, color: colors.base.text, fontSize: 15 }}>{label}:</Text>
               <Picker
-                selectedValue={extended?.privacy?.[field.toLowerCase().replace(" ", "_")] ?? "public"}
-                onValueChange={(v) => console.log(`Update ${field} ->`, v)}
+                selectedValue={privacyDraft[key] ?? "public"}
+                onValueChange={async (v) => {
+                  const value = v as PrivacyLevel;
+                  setPrivacyDraft((prev) => ({ ...prev, [key]: value }));
+                  try {
+                    await updateMyProfile({
+                      privacy: { ...(privacyDraft || {}), [key]: value },
+                    });
+                  } catch (e) {
+                    console.error("Failed to update privacy:", e);
+                  }
+                }}
                 style={{ flex: 1, height: 30, color: colors.base.text }}
                 dropdownIconColor={colors.base.text}
               >
                 <Picker.Item label="Public" value="public" />
+                <Picker.Item label="Friends" value="friends" />
                 <Picker.Item label="Private" value="private" />
               </Picker>
             </View>
@@ -430,10 +684,11 @@ export default function Profile({ navigation }: any) {
       {/* Questions */}
       <Card style={{ minHeight: 200 }}>
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
-          <Text style={{ fontSize: 18, fontWeight: "700", flex: 1, color: colors.base.text }}>
+          <Text
+            style={{ fontSize: 20, fontWeight: "800", flex: 1, color: colors.base.text }}
+          >
             Your Questions
           </Text>
-
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
               onPress={() => navigation.navigate("MyQuestions")}
@@ -446,7 +701,6 @@ export default function Profile({ navigation }: any) {
             >
               <Text style={{ color: colors.aqua.text, fontWeight: "600" }}>See more</Text>
             </Pressable>
-
             <Pressable
               onPress={() => navigation.navigate("SavedForums")}
               style={{
@@ -456,12 +710,16 @@ export default function Profile({ navigation }: any) {
                 backgroundColor: colors.peach.light,
               }}
             >
-              <Text style={{ color: colors.peach.text, fontWeight: "600" }}>Saved Forums</Text>
+              <Text style={{ color: colors.peach.text, fontWeight: "600" }}>
+                Saved Forums
+              </Text>
             </Pressable>
           </View>
         </View>
 
-        {questions.length > 0 ? (
+        {loadingQuestions ? (
+          <ActivityIndicator size="small" color={colors.aqua.dark} />
+        ) : questions.length > 0 ? (
           questions.map((q) => (
             <Pressable
               key={q.qid}
@@ -472,14 +730,16 @@ export default function Profile({ navigation }: any) {
                 borderBottomColor: colors.base.border,
               }}
             >
-              <Text style={{ fontWeight: "600", color: colors.base.text }}>{q.title}</Text>
+              <Text style={{ fontWeight: "600", color: colors.base.text, fontSize: 15 }}>
+                {q.title}
+              </Text>
               <Text style={{ color: colors.base.muted, fontSize: 13 }}>
                 💬 {q.reply_count} • 🤍 {q.likes}
               </Text>
             </Pressable>
           ))
         ) : (
-          <Text style={{ color: colors.base.muted }}>No questions yet.</Text>
+          <Text style={{ color: colors.base.muted, fontSize: 14 }}>No questions yet.</Text>
         )}
       </Card>
     </ScrollView>

@@ -47,7 +47,7 @@ export default function Timers({ navigation }: any) {
   const DEFAULT_NAPPY_MS = 2 * 60 * 60 * 1000;   // 02:00:00
   const DEFAULT_FOOD_MS  = 4.5 * 60 * 60 * 1000; // 04:30:00
 
-  // Totals (Summary shows these)
+  // Totals
   const [nappyTotalMs, setNappyTotalMs] = useState(DEFAULT_NAPPY_MS);
   const [foodTotalMs, setFoodTotalMs]   = useState(DEFAULT_FOOD_MS);
 
@@ -61,12 +61,12 @@ export default function Timers({ navigation }: any) {
   const [nappyStatus, setNappyStatus] = useState<"Asleep" | "Awake">("Awake");
   const [foodStatus, setFoodStatus]   = useState<"Hungry" | "Full">("Hungry");
 
-  // One shared tick
+  // Tick
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const nappyAlertedRef = useRef(false);
   const foodAlertedRef = useRef(false);
 
-  // Notifications setup
+  // Notifications
   useEffect(() => {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -84,8 +84,8 @@ export default function Timers({ navigation }: any) {
         if (status !== "granted") {
           await Notifications.requestPermissionsAsync();
         }
-      } catch (e) {
-        // ignore permission errors; best-effort
+      } catch {
+        // ignore
       }
     };
     requestPermissions();
@@ -94,6 +94,7 @@ export default function Timers({ navigation }: any) {
   const triggerAlarm = async (title: string, body: string) => {
     try {
       if (Platform.OS !== "web") {
+        // @ts-ignore
         await Notifications.presentNotificationAsync({
           title,
           body,
@@ -101,8 +102,8 @@ export default function Timers({ navigation }: any) {
         });
         Vibration.vibrate(800);
       }
-    } catch (e) {
-      // noop
+    } catch {
+      // ignore
     }
   };
 
@@ -174,7 +175,7 @@ export default function Timers({ navigation }: any) {
     }
   };
 
-  // NEW: status toggles
+  // Status toggles
   const toggleNappyStatus = () =>
     setNappyStatus((s) => (s === "Asleep" ? "Awake" : "Asleep"));
 
@@ -398,7 +399,11 @@ export default function Timers({ navigation }: any) {
                 Ask Bibi to learn more about nap and food times for your children
               </Text>
               <Pressable
-                onPress={() => navigation?.navigate?.("Bibi")}
+                onPress={() =>
+                  navigation?.navigate?.("Bibi", {
+                    preset: "Hi Bibi, can you give me advice about sleep and food times for my children?",
+                  })
+                }
                 style={{
                   backgroundColor: colors.peach.dark,
                   paddingHorizontal: 16,

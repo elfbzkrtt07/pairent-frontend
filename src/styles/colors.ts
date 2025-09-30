@@ -1,14 +1,14 @@
 const colors = {
   aqua: {
     dark: "#04504fff",
-    normal: "#b7f2ff",
+    normal: "#88d7e9ff",
     light: "#E5FAFA",
     text: "#022831",
   },
   peach: {
     dark: "#d17232ff",
-    normal: "#FFd4b7",
-    light: "#FFE9DC",
+    normal: "#fbbf98ff",
+    light: "#fddfcdff",
     text: "#b8531dff",
     subtext: "#915e39ff",
   },

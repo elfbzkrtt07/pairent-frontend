@@ -10,27 +10,32 @@ export type Child = {
 };
 
 export type GrowthRecord = {
+  id?: string;
   date: string;
   height: number;
   weight: number;
 };
 
 export type VaccineRecord = {
+  id?: string;
   name: string;
   date: string;
   status: "done" | "pending" | "skipped";
 };
 
+export type PrivacyLevel = "public" | "private" | "friends";
+
 export type ExtendedUser = {
   id: string;
   bio?: string;
   children?: Child[];
-  privacy?: Record<string, "public" | "private">;
+  privacy?: Record<string, PrivacyLevel>;
   friends?: string[];
   name?: string;
   email?: string;
   dob?: string;
 };
+
 
 // ---------- Helpers ----------
 async function authFetch(url: string, options: RequestInit = {}) {
@@ -68,10 +73,8 @@ export async function getUserProfile(userId: string): Promise<ExtendedUser> {
   return res.json();
 }
 
-// ---------- Public User (unauth parts proxied via service) ----------
+// ---------- Public User ----------
 export async function getPublicUser(userId: string) {
-  // Backend does not expose /users/<id> in provided routes.
-  // Fallback to privacy-filtered profile endpoint if suitable.
   const res = await authFetch(`http://localhost:5000/profile/${userId}`);
   if (!res.ok) throw new Error("Failed to fetch public user");
   return res.json();
@@ -88,7 +91,6 @@ export async function addChild(payload: { name: string; dob: string }) {
 }
 
 export async function listChildren(): Promise<{ items: Child[] }> {
-  // Backend does not provide /profile/children; read from /profile/me
   const res = await authFetch("http://localhost:5000/profile/me");
   if (!res.ok) throw new Error("Failed to list children");
   const me = await res.json();
@@ -128,7 +130,7 @@ export async function toggleMilestone(childId: string, milestoneId: string) {
   if (!res.ok) throw new Error("Failed to toggle milestone");
 }
 
-// ---------- Growth & Vaccines ----------
+// ---------- Growth ----------
 export async function addGrowth(childId: string, payload: GrowthRecord) {
   const res = await authFetch(`http://localhost:5000/profile/me/children/${childId}/growth`, {
     method: "POST",
@@ -138,6 +140,13 @@ export async function addGrowth(childId: string, payload: GrowthRecord) {
   return res.json();
 }
 
+export async function listGrowth(childId: string): Promise<{ items: GrowthRecord[] }> {
+  const res = await authFetch(`http://localhost:5000/profile/me/children/${childId}/growth`);
+  if (!res.ok) throw new Error("Failed to list growth records");
+  return res.json();
+}
+
+// ---------- Vaccines ----------
 export async function addVaccine(childId: string, payload: VaccineRecord) {
   const res = await authFetch(`http://localhost:5000/profile/me/children/${childId}/vaccine`, {
     method: "POST",
@@ -146,6 +155,13 @@ export async function addVaccine(childId: string, payload: VaccineRecord) {
   if (!res.ok) throw new Error("Failed to add vaccine record");
   return res.json();
 }
+
+export async function listVaccines(childId: string): Promise<{ items: VaccineRecord[] }> {
+  const res = await authFetch(`http://localhost:5000/profile/me/children/${childId}/vaccine`);
+  if (!res.ok) throw new Error("Failed to list vaccine records");
+  return res.json();
+}
+
 
 // ---------- Friends ----------
 export async function sendFriendRequest(userId: string) {

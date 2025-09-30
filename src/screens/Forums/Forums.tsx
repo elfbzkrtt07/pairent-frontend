@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { listQuestions, listMyQuestions } from "../../services/forum";
 import colors from "../../styles/colors";
 
@@ -29,6 +30,8 @@ type Thread = {
   replies_preview: Reply[];
 };
 
+type SortKey = "recent" | "popular";
+
 export default function Forums({ navigation }: any) {
   const { width } = useWindowDimensions();
   const isWide = width >= 1000;
@@ -37,12 +40,16 @@ export default function Forums({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [myQuestions, setMyQuestions] = useState<Thread[]>([]);
   const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
+  const [sort, setSort] = useState<SortKey>("popular");
 
   useEffect(() => {
     const loadThreads = async () => {
       try {
+        setLoading(true);
+        const backendSort = sort === "recent" ? "new" : sort;
+
         const [allData, myData] = await Promise.all([
-          listQuestions({ limit: 10, sort: "new" }),
+          listQuestions({ limit: 10, sort: backendSort }),
           listMyQuestions({ limit: 3, sort: "popular" }),
         ]);
 
@@ -58,7 +65,7 @@ export default function Forums({ navigation }: any) {
     };
 
     loadThreads();
-  }, []);
+  }, [sort]);
 
   const toggleLike = (qid: string) => {
     setThreads((prev) =>
@@ -92,10 +99,44 @@ export default function Forums({ navigation }: any) {
           >
             {/* LEFT: threads list */}
             <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-                <Text style={{ fontSize: 24, fontWeight: "800", color: colors.aqua.text }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 12,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 24, fontWeight: "800", color: colors.aqua.text }}
+                >
                   FORUMS
                 </Text>
+
+                {/* 🔽 Dropdown for sort */}
+                <View
+                  style={{
+                    marginLeft: 12,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: colors.base.border,
+                    backgroundColor: "#fff",
+                    paddingHorizontal: 4,
+                    minWidth: 140,
+                    justifyContent: "center",
+                    height: 36,
+                  }}
+                >
+                  <Picker
+                    selectedValue={sort}
+                    onValueChange={(v) => setSort(v as SortKey)}
+                    style={{ height: 36, color: colors.base.text }}
+                    dropdownIconColor={colors.base.text}
+                  >
+                    <Picker.Item label="Popular" value="popular" />
+                    <Picker.Item label="Recent" value="recent" />
+                  </Picker>
+                </View>
+
                 <Pressable
                   onPress={() => navigation.navigate("NewQuestion")}
                   style={{
@@ -108,7 +149,9 @@ export default function Forums({ navigation }: any) {
                     justifyContent: "center",
                   }}
                 >
-                  <Text style={{ color: colors.aqua.text, fontSize: 22, marginTop: -2 }}>＋</Text>
+                  <Text style={{ color: colors.aqua.text, fontSize: 22, marginTop: -2 }}>
+                    ＋
+                  </Text>
                 </Pressable>
               </View>
 
@@ -131,7 +174,9 @@ export default function Forums({ navigation }: any) {
                   }}
                 >
                   {/* Title */}
-                  <Pressable onPress={() => navigation.navigate("QuestionDetail", { qid: t.qid })}>
+                  <Pressable
+                    onPress={() => navigation.navigate("QuestionDetail", { qid: t.qid })}
+                  >
                     <Text
                       style={{
                         fontSize: 20,
@@ -146,7 +191,9 @@ export default function Forums({ navigation }: any) {
 
                   {/* Author row */}
                   <Pressable
-                    onPress={() => navigation.navigate("ProfilePublic", { username: t.author_name })}
+                    onPress={() =>
+                      navigation.navigate("ProfilePublic", { username: t.author_name })
+                    }
                     style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
                   >
                     <View
@@ -250,7 +297,9 @@ export default function Forums({ navigation }: any) {
                         padding: 12,
                       }}
                     >
-                      <Text style={{ fontWeight: "700", marginBottom: 6, color: colors.base.text }}>
+                      <Text
+                        style={{ fontWeight: "700", marginBottom: 6, color: colors.base.text }}
+                      >
                         {q.title}
                       </Text>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -273,7 +322,10 @@ export default function Forums({ navigation }: any) {
                   ))
                 )}
 
-                <Pressable style={{ marginLeft: "auto" }} onPress={() => navigation.navigate("MyQuestions")}>
+                <Pressable
+                  style={{ marginLeft: "auto" }}
+                  onPress={() => navigation.navigate("MyQuestions")}
+                >
                   <Text style={{ color: colors.peach.dark, fontWeight: "700" }}>See all</Text>
                 </Pressable>
 

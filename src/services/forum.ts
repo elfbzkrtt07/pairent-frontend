@@ -30,7 +30,8 @@ async function authHeaders(includeContent = false) {
   };
 }
 
-// Listing and creation
+// ---------- Questions ----------
+
 export async function listQuestions(params: {
   limit?: number;
   sort?: string; // backend expects 'new' or 'popular'
@@ -57,6 +58,14 @@ export async function listMyQuestions(params: {
   return res.json();
 }
 
+export async function searchQuestions(query: string): Promise<{ items: any[] }> {
+  const res = await fetch(`${API_URL}/questions/search?q=${encodeURIComponent(query)}`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to search questions");
+  return res.json();
+}
+
 export async function createQuestion(payload: {
   title: string;
   body: string;
@@ -78,13 +87,13 @@ export async function getQuestion(qid: string): Promise<QuestionDetail> {
   return res.json();
 }
 
+// ---------- Replies ----------
+
 export async function listReplies(params: {
   qid: string;
   parentId: string | null;
 }): Promise<{ items: Reply[] }> {
-  // Backend does not expose list replies endpoint in provided routes.
-  // Fallback: return empty list to avoid breaking UI until backend supports it.
-  return { items: [] };
+  return { items: [] }; // backend not ready
 }
 
 export async function createReply(params: {
@@ -105,13 +114,12 @@ export async function createReply(params: {
 }
 
 export async function likeQuestion(qid: string, like: boolean): Promise<number> {
-  // Backend uses POST to like and DELETE to unlike (204 No Content)
   const res = await fetch(`${API_URL}/questions/${qid}/like`, {
     method: like ? "POST" : "DELETE",
     headers: await authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to toggle like");
-  // Re-fetch question to get updated likes
+
   const r2 = await fetch(`${API_URL}/questions/${qid}`);
   if (!r2.ok) throw new Error("Failed to fetch question after like");
   const q = await r2.json();
@@ -119,18 +127,16 @@ export async function likeQuestion(qid: string, like: boolean): Promise<number> 
 }
 
 export async function likeReply(rid: string, liked: boolean): Promise<number> {
-  // Backend route not available; no-op to keep UI responsive
   throw new Error("likeReply not implemented in backend");
 }
 
 export async function deleteReply(rid: string): Promise<void> {
-  // Backend route not available; resolve without network to allow UI removal
   return;
 }
 
+// ---------- Saved ----------
+
 export async function getSaved(qid: string): Promise<{ saved: boolean }> {
-  // Backend does not provide GET per-question saved state.
-  // Fallback: check presence in the saved list.
   try {
     const list = await listSavedQuestions();
     const found = (list.items || []).some((it: any) => it.qid === qid);
@@ -172,7 +178,8 @@ export async function deleteQuestion(qid: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete question");
 }
 
+// ---------- Users ----------
+
 export async function listQuestionsByUser(userId: string, params: { limit?: number; sort?: string } = {}) {
-  // Backend route not provided; return empty list to avoid breaking UI
   return { items: [] };
 }

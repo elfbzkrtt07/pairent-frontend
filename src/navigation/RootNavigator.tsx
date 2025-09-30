@@ -51,7 +51,7 @@ const linking = {
 
 function activeTabFor(
   routeName: string
-): "home" | "forums" | "timers" | "milestones" | "breakrooms" | undefined {
+): "home" | "forums" | "timers" | "milestones" | "breakrooms" | "bibi" | undefined {
   switch (routeName) {
     case "Home":
       return "home";
@@ -66,6 +66,8 @@ function activeTabFor(
       return "milestones";
     case "Breakroom":
       return "breakrooms";
+    case "Bibi":
+        return "bibi";
     default:
       return undefined; 
   }
@@ -85,6 +87,7 @@ export default function RootNavigator() {
   return (
     <NavigationContainer linking={linking}>
       {user ? (
+        //@ts-ignore
         <Stack.Navigator
           screenOptions={({ navigation, route }) => ({
             header: () => (
@@ -108,6 +111,7 @@ export default function RootNavigator() {
           <Stack.Screen name="SavedForums" component={SavedForums} />
         </Stack.Navigator>
       ) : (
+        //@ts-ignore
         <Stack.Navigator screenOptions={{ headerTitle: "" }}>
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="Register" component={Register} />
