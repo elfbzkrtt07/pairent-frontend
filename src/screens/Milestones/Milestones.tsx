@@ -284,11 +284,11 @@ export default function Milestones() {
               </Pressable>
             ))}
 
-            {/* Ask Bibi button with preset prompt */}
+            {/* Ask BiBi button with preset prompt */}
             <Pressable
               onPress={() =>
-                navigation.navigate("Bibi", {
-                  preset: "Hi Bibi, whats the milestones my child should be hitting?",
+                navigation.navigate("BiBi", {
+                  preset: "Hi BiBi, whats the milestones my child should be hitting?",
                 })
               }
               style={{
@@ -300,7 +300,7 @@ export default function Milestones() {
                 borderRadius: 8,
               }}
             >
-              <Text style={{ color: "white", fontWeight: "700" }}>Ask Bibi</Text>
+              <Text style={{ color: "white", fontWeight: "700" }}>Ask BiBi</Text>
             </Pressable>
           </View>
         </View>

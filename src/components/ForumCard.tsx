@@ -8,7 +8,7 @@ export type ForumCardItem = {
   qid: string;
   title: string;
   author_name: string;
-  child_age: number;
+  child_age_label: string;   // 👈 now a string, not a number
   likes: number;
   reply_count: number;
   created_at?: string; // YYYYMMDDHHMMSS
@@ -103,7 +103,7 @@ export default function ForumCard({
           }}
         >
           <Text style={{ color: "white", fontWeight: "600" }}>
-            {item.child_age + " yrs"}
+            {item.child_age_label}
           </Text>
         </View>
 

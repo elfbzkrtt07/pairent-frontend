@@ -16,7 +16,7 @@ import Milestones from "../screens/Milestones/Milestones";
 import Forums from "../screens/Forums/Forums";
 import ProfilePublic from "../screens/Profile/ProfilePublic";
 import SearchResults from "../screens/Home/SearchResults"; 
-import Bibi from "../screens/Bibi/Bibi";
+import BiBi from "../screens/BiBi/BiBi";
 import Breakroom from "../screens/Breakrooms/Breakrooms";
 import MyQuestions from "../screens/Profile/MyQuestions";
 import SavedForums from "../screens/Profile/SavedForums";
@@ -38,7 +38,7 @@ const linking = {
       Milestones: "milestones/:childId?",
       Profile: "profile",
       ProfilePublic: "profile/:userId",
-      Bibi: "bibi",
+      BiBi: "BiBi",
       Breakroom: "breakroom",
       MyQuestions: "profile/my-questions",
       SavedForums: "profile/saved-forums",
@@ -51,7 +51,7 @@ const linking = {
 
 function activeTabFor(
   routeName: string
-): "home" | "forums" | "timers" | "milestones" | "breakrooms" | "bibi" | undefined {
+): "home" | "forums" | "timers" | "milestones" | "breakrooms" | "BiBi" | undefined {
   switch (routeName) {
     case "Home":
       return "home";
@@ -66,8 +66,8 @@ function activeTabFor(
       return "milestones";
     case "Breakroom":
       return "breakrooms";
-    case "Bibi":
-        return "bibi";
+    case "BiBi":
+        return "BiBi";
     default:
       return undefined; 
   }
@@ -104,7 +104,7 @@ export default function RootNavigator() {
           <Stack.Screen name="Milestones" component={Milestones} />
           <Stack.Screen name="Profile" component={Profile} />
           <Stack.Screen name="ProfilePublic" component={ProfilePublic} />
-          <Stack.Screen name="Bibi" component={Bibi} />
+          <Stack.Screen name="BiBi" component={BiBi} />
           <Stack.Screen name="Breakroom" component={Breakroom} />
           <Stack.Screen name="MyQuestions" component={MyQuestions} />
           <Stack.Screen name="CreateBreakroom" component={CreateBreakroom} />

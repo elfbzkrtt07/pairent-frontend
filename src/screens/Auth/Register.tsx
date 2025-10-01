@@ -61,7 +61,8 @@ export default function Register({ navigation }: any) {
       await signUp(email.trim(), pwd, name.trim(), dobStr);
 
       // 2. Send to backend
-      const res = await fetch("http://localhost:5000/profile/register", {
+      // Commented out for now since we get CORS errors on backend
+      /*const res = await fetch("http://localhost:5000/profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -75,7 +76,7 @@ export default function Register({ navigation }: any) {
 
       if (!res.ok) {
         throw new Error("Failed to save user to backend");
-      }
+      }*/
 
       // 3. Navigate to confirm page
       navigation.navigate("ConfirmSignUp", { email: email.trim() });

@@ -10,21 +10,11 @@ import {
   TextInput,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import { listQuestions } from "../../services/forum";
+import { listQuestions, Question } from "../../services/forum";
 import { getDailyTip } from "../../services/tips";
 import colors from "../../styles/colors";
 
 type SortKey = "recent" | "popular";
-
-type Question = {
-  qid: string;
-  title: string;
-  body: string;
-  author_name: string;
-  child_age_label: string;
-  likes: number;
-  reply_count: number;
-};
 
 export default function Home({ navigation }: any) {
   const { width } = useWindowDimensions();
@@ -44,7 +34,7 @@ export default function Home({ navigation }: any) {
         setLoading(true);
         const backendSort = sort === "recent" ? "new" : sort;
         const data = await listQuestions({ limit: 3, sort: backendSort });
-        setRows((data.items as any[]) || []);
+        setRows(data.items || []);
       } catch (err) {
         console.error("Network error:", err);
         setRows([]);
@@ -321,6 +311,7 @@ export default function Home({ navigation }: any) {
                 {/* Replies button */}
                 <Pressable
                   onPress={() =>
+                    // console.log("View all replies for", q.qid) +
                     navigation.navigate("QuestionDetail", { qid: q.qid })
                   }
                   style={{
@@ -378,8 +369,8 @@ export default function Home({ navigation }: any) {
                 </Text>
                 <Pressable
                   onPress={() =>
-                    navigation.navigate("Bibi", {
-                      preset: "Hi Bibi, can you give me a parenting tip for today?",
+                    navigation.navigate("BiBi", {
+                      preset: "Hi BiBi, can you give me a parenting tip for today?",
                     })
                   }
                   style={{
@@ -390,7 +381,7 @@ export default function Home({ navigation }: any) {
                     borderRadius: 8,
                   }}
                 >
-                  <Text style={{ color: "white", fontWeight: "700" }}>Ask Bibi</Text>
+                  <Text style={{ color: "white", fontWeight: "700" }}>Ask BiBi</Text>
                 </Pressable>
               </View>
             ) : null}

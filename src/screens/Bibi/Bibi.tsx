@@ -1,4 +1,4 @@
-// src/screens/Bibi/Bibi.tsx
+// src/screens/BiBi/BiBi.tsx
 import { useState } from "react";
 import {
   View,
@@ -21,7 +21,7 @@ export default function Chatbot({ route, navigation }: any) {
   const preset: string | undefined = route.params?.preset;
 
   const [messages, setMessages] = useState<Message[]>([
-    { id: "1", from: "bot", text: "Hi, I’m Bibi! How can I help you today?" },
+    { id: "1", from: "bot", text: "Hi, I’m BiBi! How can I help you today?" },
   ]);
   const [input, setInput] = useState(preset || "");
 
@@ -85,7 +85,7 @@ export default function Chatbot({ route, navigation }: any) {
             color: colors.base.text,
           }}
         >
-          Bibi
+          BiBi
         </Text>
       </View>
 

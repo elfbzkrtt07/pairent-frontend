@@ -63,6 +63,7 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     const load = async () => {
       try {
         setLoading(true);
+        console.log("Route params in QuestionDetailScreen:", route.params);
         const [qData, repliesData, savedData] = await Promise.all([
           getQuestion(qid),
           listReplies({ qid, parentId: null }),
@@ -119,17 +120,20 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     [expanded, replyMap, qid]
   );
 
-  const onToggleQuestionLike = useCallback(async () => {
-    const next = !likedQuestion;
-    setLikedQuestion(next);
+const onToggleQuestionLike = useCallback(async () => {
+  const next = !likedQuestion;
+  setLikedQuestion(next);
 
-    try {
-      const likes = await likeQuestion(qid, next);
-      setQ((prev) => (prev ? { ...prev, likes } : prev));
-    } catch (err) {
-      console.error("Like failed:", err);
-    }
-  }, [likedQuestion, qid]);
+  try {
+    const likes = await likeQuestion(qid, next);
+    setQ((prev) => (prev ? { ...prev, likes } : prev));
+  } catch (err) {
+    console.error("Like failed:", err);
+    // Rollback optimistic update if needed
+    setLikedQuestion(!next);
+  }
+}, [likedQuestion, qid]);
+
 
   const onToggleReplyLike = useCallback(
     async (rid: string) => {

@@ -15,45 +15,35 @@ type AuthCtx = {
 const AuthContext = createContext<AuthCtx | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  console.log("A0: AuthProvider mounted");
-
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("A1: checking existing session…");
     (async () => {
       try {
         const current = await getCurrentUser();
-        console.log("A2: getCurrentUser OK:", current);
         const attrs = await fetchUserAttributes();
-        console.log("A3: fetchUserAttributes OK:", attrs);
         setUser({
           email: attrs.email ?? "",
           name: attrs.name ?? "",
           birthdate: attrs.birthdate ?? "",
         });
-        console.log("A4: session restored for:", attrs.email);
       } catch (err) {
-        console.log("A2x: no session / restore failed:", err);
         setUser(null);
       } finally {
         setLoading(false);
-        console.log("A5: session check done. loading=false");
       }
     })();
   }, []);
 
   const signUpHandler = useCallback(
     async (email: string, password: string, name: string, birthdate: string) => {
-      console.log("B1: signUp called", { email, name, birthdate });
       try {
         await signUp({
-          username: email, // ✅ use email as username
+          username: email, 
           password,
           options: { userAttributes: { email, name, birthdate } },
         });
-        console.log("B2: signUp OK:", email);
       } catch (e: any) {
         console.error("B2x: signUp failed:", e);
         if (!name) throw new Error("Name cannot be empty");
@@ -72,10 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const confirmHandler = useCallback(async (email: string, code: string) => {
-    console.log("C1: confirmSignUp called", email);
     try {
       await confirmSignUp({ username: email, confirmationCode: code });
-      console.log("C2: confirmSignUp OK:", email);
     } catch (e) {
       console.error("C2x: confirmSignUp failed:", e);
       throw e;
@@ -83,37 +71,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInHandler = useCallback(async (email: string, password: string) => {
-    console.log("D1: signIn called", email);
     try {
       await signIn({ username: email, password });
-      console.log("D2: signIn OK");
       const attrs = await fetchUserAttributes();
-      console.log("D3: fetchUserAttributes after signIn:", attrs);
       setUser({
         email: attrs.email ?? "",
         name: attrs.name ?? "",
         birthdate: attrs.birthdate ?? "",
       });
-      console.log("D4: user set:", attrs.email);
     } catch (e: any) {
       console.error("D2x: signIn failed:", e);
-      console.log("D2x: err.name:", e?.name);
-      console.log("D2x: err.message:", e?.message);
-      console.log("D2x: err.stack:", e?.stack);
       throw e;
     }
   }, []);
 
   const signOutHandler = useCallback(async () => {
-    console.log("E1: signOut called");
     try {
       await signOut();
-      console.log("E2: signOut OK");
     } catch (e) {
       console.error("E2x: signOut failed:", e);
     } finally {
       setUser(null);
-      console.log("E3: user cleared");
     }
   }, []);
 
@@ -138,7 +116,6 @@ export function useAuth() {
     console.error("Zx: useAuth outside AuthProvider!");
     throw new Error("useAuth must be used within AuthProvider");
   }
-  console.log("Z2: useAuth consumed. user =", ctx.user);
   return ctx;
 }
 
