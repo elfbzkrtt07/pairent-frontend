@@ -18,7 +18,6 @@ export default function EditQuestion({ route, navigation }: any) {
         const q = await getQuestion(qid);
         setTitle(q.title || "");
         setDescription(q.body || "");
-        // join tags array into a comma-separated string for input
         if ((q as any).tags) {
           setTags((q as any).tags.join(", "));
         }

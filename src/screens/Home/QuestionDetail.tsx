@@ -120,19 +120,18 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     [expanded, replyMap, qid]
   );
 
-const onToggleQuestionLike = useCallback(async () => {
-  const next = !likedQuestion;
-  setLikedQuestion(next);
+    const onToggleQuestionLike = useCallback(async () => {
+    const next = !likedQuestion;
+    setLikedQuestion(next);
 
-  try {
-    const likes = await likeQuestion(qid, next);
-    setQ((prev) => (prev ? { ...prev, likes } : prev));
-  } catch (err) {
-    console.error("Like failed:", err);
-    // Rollback optimistic update if needed
-    setLikedQuestion(!next);
-  }
-}, [likedQuestion, qid]);
+    try {
+        const likes = await likeQuestion(qid, next);
+        setQ((prev) => (prev ? { ...prev, likes } : prev));
+    } catch (err) {
+        console.error("Like failed:", err);
+        setLikedQuestion(!next);
+    }
+    }, [likedQuestion, qid]);
 
 
   const onToggleReplyLike = useCallback(

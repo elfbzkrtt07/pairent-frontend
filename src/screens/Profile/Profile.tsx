@@ -625,7 +625,6 @@ export default function Profile({ navigation }: any) {
                   <Text style={{ fontSize: 16, fontWeight: "700", color: colors.base.text }}>
                     {c.name}
                   </Text>
-                  <Text style={{ fontSize: 14, color: colors.base.muted }}>{c.age} yrs old</Text>
                 </View>
               </View>
             ))

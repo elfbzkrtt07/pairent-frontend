@@ -25,7 +25,7 @@ export default function NewQuestion({ navigation }: any) {
         title,
         body: description,
         tags: [],
-        age: Number(age), // ✅ use textbox value
+        age: Number(age), 
       });
       console.log("Saved question:", data);
 

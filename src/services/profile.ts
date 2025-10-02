@@ -6,7 +6,6 @@ export type Child = {
   id: string;
   name: string;
   dob?: string;
-  age?: number;
 };
 
 export type GrowthRecord = {
@@ -82,23 +81,23 @@ export async function getPublicUser(userId: string) {
 }
 
 // ---------- Children ----------
-export async function addChild(payload: { name: string; dob: string }) {
+export async function addChild(payload: { name: string; dob: string }): Promise<Child> {
   const res = await authFetch(`${API_URL}/profile/me/children`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Failed to add child");
-  return res.json();
+  return res.json(); // backend returns the created child
 }
 
-export async function listChildren(): Promise<{ items: Child[] }> {
+export async function listChildren(): Promise<Child[]> {
   const res = await authFetch(`${API_URL}/profile/me`);
   if (!res.ok) throw new Error("Failed to list children");
   const me = await res.json();
-  return { items: me.children || [] };
+  return me.children ?? []; // always return an array
 }
 
-export async function updateChild(childId: string, payload: Partial<Child>) {
+export async function updateChild(childId: string, payload: Partial<Child>): Promise<Child> {
   const res = await authFetch(`${API_URL}/profile/me/children/${childId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
@@ -107,7 +106,7 @@ export async function updateChild(childId: string, payload: Partial<Child>) {
   return res.json();
 }
 
-export async function deleteChild(childId: string) {
+export async function deleteChild(childId: string): Promise<void> {
   const res = await authFetch(`${API_URL}/profile/me/children/${childId}`, {
     method: "DELETE",
   });

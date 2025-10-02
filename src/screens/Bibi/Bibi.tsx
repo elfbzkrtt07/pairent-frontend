@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import colors from "../../styles/colors";
+import { askBibi } from "../../config/aws-bedrock";
 
 type Message = {
   id: string;
@@ -38,15 +39,24 @@ export default function Chatbot({ route, navigation }: any) {
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
 
-    // 🔹 Simulate backend reply (replace with API call later)
-    setTimeout(() => {
-      const botMsg: Message = {
-        id: Date.now().toString(),
-        from: "bot",
-        text: `I can't reply now since backend is not implemented yet. You said: "${trimmed}"`,
-      };
-      setMessages((prev) => [...prev, botMsg]);
-    }, 800);
+    try {
+        const reply = await askBibi(trimmed);
+
+        const botMsg: Message = {
+            id: Date.now().toString(),
+            from: "bot",
+            text: reply || "Sorry, I didn’t get that.",
+        };
+        setMessages((prev) => [...prev, botMsg]);
+        } catch (err) {
+        console.error("BiBi error:", err);
+        const botMsg: Message = {
+            id: Date.now().toString(),
+            from: "bot",
+            text: "Could not reach BiBi. Please try again.",
+        };
+        setMessages((prev) => [...prev, botMsg]);
+    }
   };
 
   return (

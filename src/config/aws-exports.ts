@@ -11,3 +11,4 @@ const awsConfig: ResourcesConfig = {
 };
 
 export default awsConfig;
+

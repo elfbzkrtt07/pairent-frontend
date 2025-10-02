@@ -13,7 +13,7 @@ export default function SearchResults({ route, navigation }: any) {
     (async () => {
       try {
         setItems(null); // show spinner
-        const data = await searchQuestions({ q }); // ✅ pass object, not string
+        const data = await searchQuestions({ q }); 
         setItems(data.items || []);
       } catch (err) {
         console.error("Search failed:", err);
