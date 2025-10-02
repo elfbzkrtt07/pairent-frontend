@@ -20,7 +20,7 @@ export type Question = {
   reply_count: number;
 };
 
-const API_URL = "http://localhost:5000";
+const API_URL = "http://127.0.0.1:5000";
 
 async function authHeaders(includeContent = false) {
   const session = await fetchAuthSession();
