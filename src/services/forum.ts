@@ -235,15 +235,39 @@ export async function listSavedQuestions(): Promise<{ items: any[] }> {
   return res.json();
 }
 
-export async function deleteQuestion(qid: string): Promise<void> {
+export async function deleteQuestion(qid: string): Promise<{ message: string }> {
   const res = await fetch(`${API_URL}/questions/${qid}`, {
     method: "DELETE",
     headers: await authHeaders(),
   });
-  if (!res.ok) throw new Error("Failed to delete question");
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to delete question: ${res.status} ${errText}`);
+  }
+
+  return res.json();
 }
 
 export async function listQuestionsByUser(userId: string, params: { limit?: number; sort?: string } = {}) {
   // Backend route not provided; return empty list to avoid breaking UI
   return { items: [] };
+}
+
+export async function editQuestion(
+  qid: string,
+  payload: { title?: string; body?: string; tags?: string[] }
+): Promise<{ message: string }> {
+  const res = await fetch(`${API_URL}/questions/${qid}`, {
+    method: "PUT",
+    headers: await authHeaders(true),
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to update question: ${res.status} ${errText}`);
+  }
+
+  return res.json();
 }

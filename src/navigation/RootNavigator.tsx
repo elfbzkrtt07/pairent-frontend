@@ -21,6 +21,7 @@ import Breakroom from "../screens/Breakrooms/Breakrooms";
 import MyQuestions from "../screens/Profile/MyQuestions";
 import SavedForums from "../screens/Profile/SavedForums";
 import CreateBreakroom from "../screens/Breakrooms/CreateBreakroom";
+import EditQuestion from "src/screens/Home/EditQuestion";
 
 import TopNav from "../components/TopNav";
 
@@ -45,6 +46,7 @@ const linking = {
       Login: "login",
       Register: "register",
       ConfirmSignUp: "confirm",
+      EditQuestion: "forums/edit/:qid",
     },
   },
 };
@@ -58,7 +60,8 @@ function activeTabFor(
     case "QuestionDetail":
     case "Forums":
     case "SearchResults":
-    case "NewQuestion":    
+    case "NewQuestion":
+    case "EditQuestion":    
       return "forums";
     case "Timers":
       return "timers";
@@ -109,6 +112,7 @@ export default function RootNavigator() {
           <Stack.Screen name="MyQuestions" component={MyQuestions} />
           <Stack.Screen name="CreateBreakroom" component={CreateBreakroom} />
           <Stack.Screen name="SavedForums" component={SavedForums} />
+          <Stack.Screen name="EditQuestion" component={EditQuestion} />
         </Stack.Navigator>
       ) : (
         //@ts-ignore

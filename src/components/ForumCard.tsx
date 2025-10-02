@@ -113,7 +113,7 @@ export default function ForumCard({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
           {/* Reply button */}
           <Pressable
-            onPress={onReplyPress ?? onPress}
+            onPress={onReplyPress }
             style={{
               flexDirection: "row",
               alignItems: "center",

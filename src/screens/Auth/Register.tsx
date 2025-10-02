@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useAuth } from "../../context/AuthContext";
 import colors from "../../styles/colors";
+import { fetchUserAttributes } from "aws-amplify/auth";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const toYMD = (d: Date) =>
@@ -55,36 +56,15 @@ export default function Register({ navigation }: any) {
   };
 
   const onSubmit = async () => {
-    setErr("");
-    try {
-      // 1. Cognito signup
-      await signUp(email.trim(), pwd, name.trim(), dobStr);
-
-      // 2. Send to backend
-      // Commented out for now since we get CORS errors on backend
-      /*const res = await fetch("http://localhost:5000/profile", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          dob: dobStr,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to save user to backend");
-      }*/
-
-      // 3. Navigate to confirm page
-      navigation.navigate("ConfirmSignUp", { email: email.trim() });
-    } catch (e: any) {
-      console.error("Registration error:", e);
-      setErr(e?.message ?? "Registration failed");
-    }
-  };
+  setErr("");
+  try {
+    await signUp(email.trim(), pwd, name.trim(), dobStr);
+    navigation.navigate("ConfirmSignUp", { email: email.trim() });
+  } catch (e: any) {
+    console.error("Registration error:", e);
+    setErr(e?.message ?? "Registration failed");
+  }
+};
 
   const field = {
     borderWidth: 1 as const,

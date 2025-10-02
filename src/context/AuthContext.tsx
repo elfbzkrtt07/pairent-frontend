@@ -1,11 +1,36 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
-import { signUp, confirmSignUp, signIn, signOut, getCurrentUser, fetchUserAttributes } from "aws-amplify/auth";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
+import {
+  signUp,
+  confirmSignUp,
+  signIn,
+  signOut,
+  getCurrentUser,
+  fetchUserAttributes,
+  fetchAuthSession,
+} from "aws-amplify/auth";
 
-type User = { email: string; name?: string; birthdate?: string } | null;
+type User = {
+  sub: string;
+  email: string;
+  name?: string;
+  birthdate?: string;
+} | null;
 
 type AuthCtx = {
   user: User;
-  signUp: (email: string, password: string, name: string, birthdate: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    name: string,
+    birthdate: string
+  ) => Promise<void>;
   confirmSignUp: (email: string, code: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -21,13 +46,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
+        // check if already logged in
         const current = await getCurrentUser();
-        const attrs = await fetchUserAttributes();
-        setUser({
-          email: attrs.email ?? "",
-          name: attrs.name ?? "",
-          birthdate: attrs.birthdate ?? "",
-        });
+        if (current) {
+          const attrs = await fetchUserAttributes();
+          setUser({
+            sub: attrs.sub ?? "",
+            email: attrs.email ?? "",
+            name: attrs.name ?? "",
+            birthdate: attrs.birthdate ?? "",
+          });
+        }
       } catch (err) {
         setUser(null);
       } finally {
@@ -40,20 +69,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (email: string, password: string, name: string, birthdate: string) => {
       try {
         await signUp({
-          username: email, 
+          username: email,
           password,
           options: { userAttributes: { email, name, birthdate } },
         });
       } catch (e: any) {
-        console.error("B2x: signUp failed:", e);
+        console.error("SignUp failed:", e);
         if (!name) throw new Error("Name cannot be empty");
         if (!email) throw new Error("Email cannot be empty");
         if (!password) throw new Error("Password cannot be empty");
-        if (!email.includes("@") || !email.includes(".")) {
+        if (!email.includes("@") || !email.includes("."))
           throw new Error("Invalid email address");
-        }
-        if (password.length < 8 || !/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
-          throw new Error("Password must be at least 8 characters long and include both letters and numbers");
+        if (
+          password.length < 8 ||
+          !/\d/.test(password) ||
+          !/[a-zA-Z]/.test(password)
+        ) {
+          throw new Error(
+            "Password must be at least 8 characters long and include both letters and numbers"
+          );
         }
         throw new Error("Sign up failed");
       }
@@ -65,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await confirmSignUp({ username: email, confirmationCode: code });
     } catch (e) {
-      console.error("C2x: confirmSignUp failed:", e);
+      console.error("ConfirmSignUp failed:", e);
       throw e;
     }
   }, []);
@@ -73,14 +107,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInHandler = useCallback(async (email: string, password: string) => {
     try {
       await signIn({ username: email, password });
+
+      // ✅ now safe to fetch attributes
       const attrs = await fetchUserAttributes();
+      const userId = attrs.sub ?? "";
+
       setUser({
+        sub: userId,
         email: attrs.email ?? "",
         name: attrs.name ?? "",
         birthdate: attrs.birthdate ?? "",
       });
+
+      // optional: create user in backend
+      await fetch("http://127.0.0.1:5000/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          name: attrs.name,
+          email: attrs.email,
+          dob: attrs.birthdate,
+        }),
+      });
     } catch (e: any) {
-      console.error("D2x: signIn failed:", e);
+      console.error("SignIn failed:", e);
       throw e;
     }
   }, []);
@@ -89,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signOut();
     } catch (e) {
-      console.error("E2x: signOut failed:", e);
+      console.error("SignOut failed:", e);
     } finally {
       setUser(null);
     }
@@ -107,20 +158,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [user, signUpHandler, confirmHandler, signInHandler, signOutHandler, loading]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    console.error("Zx: useAuth outside AuthProvider!");
+    console.error("UseAuth outside AuthProvider!");
     throw new Error("useAuth must be used within AuthProvider");
   }
   return ctx;
 }
 
-import { fetchAuthSession } from "aws-amplify/auth";
-
+// helper to get raw id token if needed
 export async function getIdToken(): Promise<string | null> {
   try {
     const session = await fetchAuthSession();

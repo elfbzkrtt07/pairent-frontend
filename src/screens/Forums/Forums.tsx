@@ -8,7 +8,11 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import { listQuestions, listMyQuestions } from "../../services/forum";
+import {
+  listQuestions,
+  listMyQuestions,
+  likeQuestion,
+} from "../../services/forum";
 import colors from "../../styles/colors";
 
 type Reply = {
@@ -67,20 +71,48 @@ export default function Forums({ navigation }: any) {
     loadThreads();
   }, [sort]);
 
-  const toggleLike = (qid: string) => {
+  const toggleLike = async (qid: string) => {
+    const next = !(likedMap[qid] ?? false);
+
+    // Optimistic update
+    setLikedMap((prev) => ({ ...prev, [qid]: next }));
     setThreads((prev) =>
       prev
         ? prev.map((t) =>
             t.qid === qid
-              ? {
-                  ...t,
-                  likes: likedMap[qid] ? t.likes - 1 : t.likes + 1,
-                }
+              ? { ...t, likes: next ? t.likes + 1 : t.likes - 1 }
               : t
           )
         : prev
     );
-    setLikedMap((prev) => ({ ...prev, [qid]: !prev[qid] }));
+
+    try {
+      // Call backend
+      const updatedLikes = await likeQuestion(qid, next);
+
+      // Sync likes with backend
+      setThreads((prev) =>
+        prev
+          ? prev.map((t) =>
+              t.qid === qid ? { ...t, likes: updatedLikes } : t
+            )
+          : prev
+      );
+    } catch (err) {
+      console.error("Like failed:", err);
+
+      // Rollback if failed
+      setLikedMap((prev) => ({ ...prev, [qid]: !next }));
+      setThreads((prev) =>
+        prev
+          ? prev.map((t) =>
+              t.qid === qid
+                ? { ...t, likes: next ? t.likes - 1 : t.likes + 1 }
+                : t
+            )
+          : prev
+      );
+    }
   };
 
   return (
@@ -226,8 +258,22 @@ export default function Forums({ navigation }: any) {
                     </View>
 
                     <View style={{ marginLeft: "auto", flexDirection: "row", gap: 16 }}>
-                      <Text style={{ color: colors.base.text }}>💬 {t.reply_count}</Text>
-
+                      <Pressable
+                        onPress={() =>
+                          navigation.navigate("QuestionDetail", { qid: t.qid })
+                        }
+                        style={{ flexDirection: "row", alignItems: "center" }}
+                      >
+                        <Text
+                          style={{
+                            color: colors.base.text,
+                            fontSize: 16,
+                            marginLeft: 6,
+                          }}
+                        >
+                          💬 {t.reply_count}
+                        </Text>
+                      </Pressable>
                       {/* 👍 Like button */}
                       <Pressable
                         onPress={() => toggleLike(t.qid)}
@@ -277,7 +323,9 @@ export default function Forums({ navigation }: any) {
                   padding: 16,
                 }}
               >
-                <Text style={{ fontSize: 16, fontWeight: "800", color: colors.peach.text }}>
+                <Text
+                  style={{ fontSize: 16, fontWeight: "800", color: colors.peach.text }}
+                >
                   YOUR QUESTIONS
                 </Text>
 
@@ -289,7 +337,9 @@ export default function Forums({ navigation }: any) {
                   myQuestions.map((q) => (
                     <Pressable
                       key={q.qid}
-                      onPress={() => navigation.navigate("QuestionDetail", { qid: q.qid })}
+                      onPress={() =>
+                        navigation.navigate("QuestionDetail", { qid: q.qid })
+                      }
                       style={{
                         marginTop: 10,
                         backgroundColor: colors.peach.normal,
@@ -298,11 +348,17 @@ export default function Forums({ navigation }: any) {
                       }}
                     >
                       <Text
-                        style={{ fontWeight: "700", marginBottom: 6, color: colors.base.text }}
+                        style={{
+                          fontWeight: "700",
+                          marginBottom: 6,
+                          color: colors.base.text,
+                        }}
                       >
                         {q.title}
                       </Text>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <View
+                        style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+                      >
                         <View
                           style={{
                             backgroundColor: colors.peach.normal,
@@ -315,7 +371,9 @@ export default function Forums({ navigation }: any) {
                             {q.child_age_label}
                           </Text>
                         </View>
-                        <Text style={{ color: colors.base.text }}>💬 {q.reply_count}</Text>
+                        <Text style={{ color: colors.base.text }}>
+                          💬 {q.reply_count}
+                        </Text>
                         <Text style={{ color: colors.base.text }}>🤍 {q.likes}</Text>
                       </View>
                     </Pressable>
@@ -326,7 +384,9 @@ export default function Forums({ navigation }: any) {
                   style={{ marginLeft: "auto" }}
                   onPress={() => navigation.navigate("MyQuestions")}
                 >
-                  <Text style={{ color: colors.peach.dark, fontWeight: "700" }}>See all</Text>
+                  <Text style={{ color: colors.peach.dark, fontWeight: "700" }}>
+                    See all
+                  </Text>
                 </Pressable>
 
                 <Pressable
@@ -340,7 +400,7 @@ export default function Forums({ navigation }: any) {
                     borderRadius: 10,
                   }}
                 >
-                  <Text style={{ color: "white", fontWeight: "800" }}>Ask Bibi</Text>
+                  <Text style={{ color: "white", fontWeight: "800" }}>Ask BiBi</Text>
                 </Pressable>
               </View>
             </View>
