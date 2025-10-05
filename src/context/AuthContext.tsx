@@ -108,7 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signIn({ username: email, password });
 
-      // ✅ now safe to fetch attributes
       const attrs = await fetchUserAttributes();
       const userId = attrs.sub ?? "";
 

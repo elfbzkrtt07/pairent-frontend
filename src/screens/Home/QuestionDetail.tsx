@@ -10,37 +10,43 @@ import {
   Alert,
   Platform,
 } from "react-native";
+
 import {
   getQuestion,
-  listReplies,
   getSaved,
   saveDiscussion,
   unsaveDiscussion,
+  getLikeStatus,
+  getReplyLikeStatus,
   likeQuestion,
+  unlikeQuestion,
   likeReply,
+  unlikeReply,
   deleteReply,
   createReply,
 } from "../../services/forum";
+
 import colors from "../../styles/colors";
 
 type Question = {
   qid: string;
   title: string;
   body: string;
-  name: string;
+  author_name: string;
   child_age_label: string;
   likes: number;
+  Replies?: Reply[];
 };
 
 type Reply = {
   rid: string;
-  parentId: string | null;
+  parent_id: string | null;
   body: string;
   name: string;
   likes: number;
 };
 
-export default function QuestionDetailScreen({ route, navigation }: any) {
+export default function QuestionDetailScreen({ route }: any) {
   const { qid } = route.params as { qid: string };
 
   const [q, setQ] = useState<Question | null>(null);
@@ -49,29 +55,54 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
   const [replyMap, setReplyMap] = useState<Record<string, Reply[]>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [loadingChildren, setLoadingChildren] = useState<Record<string, boolean>>({});
-  const [likedQuestion, setLikedQuestion] = useState(false);
+  const [likes, setLikes] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
 
-  const [replyLiked, setReplyLiked] = useState<Record<string, boolean>>({});
   const [replyText, setReplyText] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
 
   const ROOT = "__root__";
 
-  // Initial load: fetch question + replies + saved
+  // 🔄 Load question + replies + like states
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        console.log("Route params in QuestionDetailScreen:", route.params);
-        const [qData, repliesData, savedData] = await Promise.all([
+
+        const [qData, qLikeData, savedData] = await Promise.all([
           getQuestion(qid),
-          listReplies({ qid, parentId: null }),
+          getLikeStatus(qid),
           getSaved(qid),
         ]);
 
-        setQ(qData as any);
-        setReplyMap({ [ROOT]: (repliesData.items as any[]) || [] });
+        setQ(qData);
+
+        // group replies for nested display
+        const replies = qData.Replies || [];
+        const grouped: Record<string, Reply[]> = { [ROOT]: [] };
+        for (const r of replies) {
+          const parent = r.parent_id && r.parent_id !== qid ? r.parent_id : ROOT;
+          if (!grouped[parent]) grouped[parent] = [];
+          grouped[parent].push(r);
+        }
+        setReplyMap(grouped);
+
+        // prepare like map
+        const likeMap: Record<string, boolean> = {};
+        likeMap[qid] = !!qLikeData.liked;
+
+        await Promise.all(
+          replies.map(async (r) => {
+            try {
+              const res = await getReplyLikeStatus(qid, r.rid);
+              likeMap[r.rid] = res.liked;
+            } catch {
+              likeMap[r.rid] = false;
+            }
+          })
+        );
+
+        setLikes(likeMap);
         setSaved(!!savedData.saved);
       } catch (err) {
         console.error("Network error:", err);
@@ -85,10 +116,10 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
 
   const topLevelReplies = replyMap[ROOT] ?? [];
 
+  // 💾 Save toggle
   const onToggleSaved = useCallback(async () => {
     const next = !saved;
     setSaved(next);
-
     try {
       if (next) await saveDiscussion(qid);
       else await unsaveDiscussion(qid);
@@ -97,87 +128,87 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     }
   }, [saved, qid]);
 
-  const handleToggleChildren = useCallback(
-    async (parentRid: string) => {
-      const isOpen = !!expanded[parentRid];
-      if (isOpen) {
-        setExpanded((prev) => ({ ...prev, [parentRid]: false }));
-        return;
-      }
+  // ❤️ Question like toggle
+  const onToggleQuestionLike = useCallback(async () => {
+    const prev = likes[qid] ?? false;
+    const next = !prev;
 
-      if (!replyMap[parentRid]) {
-        setLoadingChildren((prev) => ({ ...prev, [parentRid]: true }));
-        try {
-          const data = await listReplies({ qid, parentId: parentRid });
-          setReplyMap((prev) => ({ ...prev, [parentRid]: data.items || [] }));
-        } finally {
-          setLoadingChildren((prev) => ({ ...prev, [parentRid]: false }));
-        }
-      }
-
-      setExpanded((prev) => ({ ...prev, [parentRid]: true }));
-    },
-    [expanded, replyMap, qid]
-  );
-
-    const onToggleQuestionLike = useCallback(async () => {
-    const next = !likedQuestion;
-    setLikedQuestion(next);
+    setLikes((prevLikes) => ({ ...prevLikes, [qid]: next }));
+    setQ((prev) => (prev ? { ...prev, likes: prev.likes + (next ? 1 : -1) } : prev));
 
     try {
-        const likes = await likeQuestion(qid, next);
-        setQ((prev) => (prev ? { ...prev, likes } : prev));
+      if (next) await likeQuestion(qid);
+      else await unlikeQuestion(qid);
     } catch (err) {
-        console.error("Like failed:", err);
-        setLikedQuestion(!next);
+      console.error("Question like failed:", err);
+      // revert
+      setLikes((prevLikes) => ({ ...prevLikes, [qid]: prev }));
+      setQ((prev) => (prev ? { ...prev, likes: prev.likes + (next ? -1 : 1) } : prev));
     }
-    }, [likedQuestion, qid]);
-
+  }, [likes, qid]);
 
   const onToggleReplyLike = useCallback(
     async (rid: string) => {
-      const next = !replyLiked[rid];
-      setReplyLiked((prev) => ({ ...prev, [rid]: next }));
+      const prev = likes[rid] ?? false;
+      const next = !prev;
+
+      setLikes((prevLikes) => ({ ...prevLikes, [rid]: next }));
+      setReplyMap((prev) => {
+        const clone: Record<string, Reply[]> = {};
+        for (const k of Object.keys(prev)) {
+          clone[k] = prev[k].map((r) =>
+            r.rid === rid ? { ...r, likes: r.likes + (next ? 1 : -1) } : r
+          );
+        }
+        return clone;
+      });
 
       try {
-        const likes = await likeReply(rid, next);
-        setReplyMap((prev) => {
-          const clone: Record<string, Reply[]> = {};
-          for (const k of Object.keys(prev)) {
-            clone[k] = prev[k].map((r) =>
-              r.rid === rid ? { ...r, likes } : r
-            );
-          }
-          return clone;
-        });
+        if (next) await likeReply(qid, rid);
+        else await unlikeReply(qid, rid);
       } catch (err) {
         console.error("Reply like failed:", err);
+        setLikes((prevLikes) => ({ ...prevLikes, [rid]: prev }));
       }
     },
-    [replyLiked]
+    [likes, qid]
   );
 
+  // ✏️ Submit reply
   const onSubmitReply = useCallback(async () => {
     const text = replyText.trim();
     if (!text || !q) return;
 
     try {
-      const newReply = await createReply({ qid, parentId: replyTo, body: text } as any);
+      const newReply = await createReply({
+        qid,
+        parent_id: replyTo,
+        body: text,
+      });
+
+      const enrichedReply = {
+        ...newReply,
+        name: newReply.name ?? "You",
+      };
+
       setReplyText("");
       setReplyTo(null);
 
       setReplyMap((prev) => {
-        if (replyTo === null)
-          return { ...prev, [ROOT]: [...(prev[ROOT] ?? []), newReply] };
+        if (!replyTo) {
+          return { ...prev, [ROOT]: [...(prev[ROOT] ?? []), enrichedReply] };
+        }
         const existing = prev[replyTo] ?? [];
-        return { ...prev, [replyTo]: [...existing, newReply] };
+        return { ...prev, [replyTo]: [...existing, enrichedReply] };
       });
+
       if (replyTo) setExpanded((prev) => ({ ...prev, [replyTo]: true }));
     } catch (err) {
       console.error("Failed to submit reply:", err);
     }
   }, [replyText, q, replyTo, qid]);
 
+  // 🗑️ Delete reply
   const onDeleteReply = useCallback(async (rid: string) => {
     let confirmed = true;
     if (Platform.OS === "web") {
@@ -185,7 +216,7 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
       confirmed = window.confirm?.("Delete this reply?") ?? true;
     } else {
       confirmed = await new Promise<boolean>((resolve) => {
-        Alert.alert("Delete reply", "Are you sure you want to delete this reply?", [
+        Alert.alert("Delete reply", "Are you sure?", [
           { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
           { text: "Delete", style: "destructive", onPress: () => resolve(true) },
         ]);
@@ -194,7 +225,7 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     if (!confirmed) return;
 
     try {
-      await deleteReply(rid);
+      await deleteReply(qid, rid);
       setReplyMap((prev) => {
         const next: Record<string, Reply[]> = {};
         for (const key of Object.keys(prev)) {
@@ -205,12 +236,14 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
     } catch (err) {
       console.error("Failed to delete reply:", err);
     }
-  }, []);
+  }, [qid]);
 
+  // 🔁 Recursive reply renderer
   const renderReplyNode = useCallback(
     (r: Reply, level: number) => {
       const children = replyMap[r.rid] ?? [];
-      const isOpen = !!expanded[r.rid];
+      const isOpen = expanded[r.rid] ?? true;
+      const isLiked = likes[r.rid] ?? false;
       const isLoading = !!loadingChildren[r.rid];
 
       return (
@@ -221,29 +254,27 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
             borderRadius: 10,
             padding: 12,
             marginBottom: 8,
-            marginLeft: level * 16,
+            marginLeft: level * 20,
+            borderLeftWidth: level > 0 ? 3 : 0,
+            borderLeftColor: level > 0 ? colors.aqua.dark : "transparent",
             borderWidth: 1,
             borderColor: colors.base.border,
           }}
         >
-          <Text style={{ fontWeight: "700", marginBottom: 4, color: colors.base.text }}>{r.name}</Text>
+          <Text style={{ fontWeight: "700", marginBottom: 4, color: colors.base.text }}>
+            {r.name}
+          </Text>
           <Text style={{ marginBottom: 8, color: colors.base.text }}>{r.body}</Text>
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <Pressable onPress={() => onToggleReplyLike(r.rid)}>
-              <Text style={{ fontSize: 14, color: colors.aqua.text }}>
-                {replyLiked[r.rid] ? "❤️" : "🤍"} {r.likes}
+              <Text style={{ fontSize: 14, color: isLiked ? "red" : colors.aqua.text }}>
+                {isLiked ? "❤️" : "🤍"} {r.likes}
               </Text>
             </Pressable>
 
             <Pressable onPress={() => setReplyTo(r.rid)}>
-              <Text style={{ fontSize: 14, color: colors.aqua.text }}>💬 Reply</Text>
-            </Pressable>
-
-            <Pressable onPress={() => handleToggleChildren(r.rid)}>
-              <Text style={{ fontSize: 14, color: colors.aqua.text }}>
-                {isOpen ? "Hide replies" : "View all replies"}
-              </Text>
+              <Text style={{ fontSize: 14, color: colors.aqua.text }}>💬</Text>
             </Pressable>
 
             <Pressable onPress={() => onDeleteReply(r.rid)}>
@@ -264,7 +295,7 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
         </View>
       );
     },
-    [expanded, loadingChildren, replyMap, replyLiked, onToggleReplyLike, handleToggleChildren, onDeleteReply]
+    [expanded, loadingChildren, replyMap, likes, onToggleReplyLike, onDeleteReply]
   );
 
   const replyingToObj = useMemo(() => {
@@ -286,6 +317,7 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16 }} style={{ backgroundColor: colors.base.background }}>
+      {/* 🟢 Question Section */}
       <View
         style={{
           backgroundColor: colors.aqua.light,
@@ -300,7 +332,7 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
         </Text>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <Text style={{ color: colors.base.text }}>👤 {q.name}</Text>
+          <Text style={{ color: colors.base.text }}>👤 {q.author_name}</Text>
           <View
             style={{
               backgroundColor: colors.aqua.dark,
@@ -322,7 +354,7 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
 
           <Pressable onPress={onToggleQuestionLike}>
             <Text style={{ fontSize: 14, color: colors.aqua.text }}>
-              {likedQuestion ? "❤️ Liked" : "🤍 Like"} ({q.likes})
+              {likes[qid] ? "❤️" : "🤍"} {q.likes}
             </Text>
           </Pressable>
         </View>
@@ -330,6 +362,7 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
         <Text style={{ lineHeight: 22, color: colors.base.text }}>{q.body}</Text>
       </View>
 
+      {/* 🟣 Replies */}
       <View style={{ marginTop: 16 }}>
         <Text style={{ fontSize: 18, fontWeight: "800", marginBottom: 8, color: colors.base.text }}>
           Replies
@@ -337,11 +370,12 @@ export default function QuestionDetailScreen({ route, navigation }: any) {
         {topLevelReplies.map((r) => renderReplyNode(r, 0))}
       </View>
 
+      {/* 🟠 Reply input */}
       <View style={{ marginTop: 24 }}>
         <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 8, color: colors.base.text }}>
           {replyingToObj
-            ? `Replying to ${replyingToObj.name}: "${replyingToObj.body.slice(0, 40)}${
-                replyingToObj.body.length > 40 ? "..." : ""
+            ? `Replying to ${replyingToObj.name || "Unknown"}: "${(replyingToObj.body || "").slice(0, 40)}${
+                (replyingToObj.body?.length ?? 0) > 40 ? "..." : ""
               }"`
             : "Add a reply"}
         </Text>

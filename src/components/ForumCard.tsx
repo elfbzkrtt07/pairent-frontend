@@ -1,16 +1,15 @@
 // src/components/ForumCard.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import colors from "../styles/colors";
-import { likeQuestion } from "../services/forum"; 
+import { likeQuestion, unlikeQuestion, getLikeStatus } from "../services/forum";
 
 export type ForumCardItem = {
   qid: string;
   title: string;
   author_name: string;
-  child_age_label: string;   // 👈 now a string, not a number
+  child_age_label: string;   // string label, e.g. "3 yrs"
   likes: number;
-  reply_count: number;
   created_at?: string; // YYYYMMDDHHMMSS
 };
 
@@ -18,26 +17,42 @@ export default function ForumCard({
   item,
   onPress,
   onReplyPress,
+  onAuthorPress,
 }: {
   item: ForumCardItem;
   onPress: () => void;
   onReplyPress?: () => void;
+  onAuthorPress?: (username: string) => void;
 }) {
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(item.likes);
   const [loading, setLoading] = useState(false);
 
+  // fetch initial like status
+  useEffect(() => {
+    (async () => {
+      try {
+        const status = await getLikeStatus(item.qid);
+        setLiked(status.liked);
+      } catch (err) {
+        console.error("Failed to fetch like status:", err);
+      }
+    })();
+  }, [item.qid]);
+
   const handleLike = async () => {
     if (loading) return;
     try {
       setLoading(true);
-      const newLike = !liked;
-      setLiked(newLike);
-      setLikes((prev) => prev + (newLike ? 1 : -1));
+      const next = !liked;
+      setLiked(next);
+      setLikes((prev) => prev + (next ? 1 : -1));
 
-      // call backend
-      const updatedLikes = await likeQuestion(item.qid, newLike);
-      setLikes(updatedLikes);
+      if (next) {
+        await likeQuestion(item.qid);
+      } else {
+        await unlikeQuestion(item.qid);
+      }
     } catch (err) {
       console.error("Failed to toggle like:", err);
       setLiked((prev) => !prev);
@@ -50,15 +65,15 @@ export default function ForumCard({
   return (
     <View
       style={{
-        backgroundColor: colors.peach.light,
+        backgroundColor: colors.aqua.light,
         borderRadius: 12,
         padding: 14,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: "transparent",
+        borderColor: colors.base.border,
       }}
     >
-      {/* Make title pressable */}
+      {/* Title */}
       <Pressable onPress={onPress}>
         <Text
           style={{
@@ -80,40 +95,52 @@ export default function ForumCard({
             height: 40,
             borderRadius: 20,
             borderWidth: 2,
-            borderColor: colors.peach.text,
+            borderColor: colors.aqua.text,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Text style={{ fontSize: 18, color: colors.peach.text }}>👤</Text>
+          <Text style={{ fontSize: 18, color: colors.aqua.text }}>👤</Text>
         </View>
 
-        <Text style={{ fontSize: 16, color: colors.base.text }}>
-          {item.author_name}
-        </Text>
-
-        {/* child age badge */}
-        <View
-          style={{
-            marginLeft: 12,
-            backgroundColor: colors.peach.dark,
-            borderRadius: 24,
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "600" }}>
-            {item.child_age_label}
+        {/* Author name as button */}
+        <Pressable onPress={() => onAuthorPress?.(item.author_name)}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: "700",
+              color: colors.aqua.text,
+              textDecorationLine: "underline",
+            }}
+          >
+            {item.author_name}
           </Text>
-        </View>
+        </Pressable>
+
+        {/* Child age badge */}
+        {item.child_age_label ? (
+          <View
+            style={{
+              marginLeft: 12,
+              backgroundColor: colors.aqua.dark,
+              borderRadius: 24,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+            }}
+          >
+            <Text style={{ color: "white", fontWeight: "600" }}>
+              {item.child_age_label}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={{ flex: 1 }} />
 
-        {/* metrics */}
+        {/* Metrics */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
           {/* Reply button */}
           <Pressable
-            onPress={onReplyPress }
+            onPress={onReplyPress}
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -122,12 +149,7 @@ export default function ForumCard({
               borderRadius: 6,
             }}
           >
-            <Text style={{ fontSize: 16, color: colors.peach.text }}>💬</Text>
-            <Text
-              style={{ fontSize: 16, marginLeft: 4, color: colors.base.text }}
-            >
-              {item.reply_count}
-            </Text>
+            <Text style={{ fontSize: 20, color: colors.aqua.text }}>💬</Text>
           </Pressable>
 
           {/* Like button */}
@@ -143,7 +165,7 @@ export default function ForumCard({
               opacity: loading ? 0.6 : 1,
             }}
           >
-            <Text style={{ fontSize: 16 }}>
+            <Text style={{ fontSize: 20 }}>
               {liked ? "❤️" : "🤍"}
             </Text>
             <Text

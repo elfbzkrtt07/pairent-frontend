@@ -60,7 +60,7 @@ export default function Profile({ navigation }: any) {
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [emailDraft, setEmailDraft] = useState("");
-  const [dobDraft, setDobDraft] = useState("");
+  const [dobDraft, setDobDraft] = useState<string>("");
   const [bioDraft, setBioDraft] = useState("");
 
   // Password change
@@ -97,7 +97,7 @@ export default function Profile({ navigation }: any) {
         setExtended(profile);
         setNameDraft(profile.name ?? user.name ?? "");
         setEmailDraft(profile.email ?? user.email ?? "");
-        setDobDraft(profile.dob ?? "");
+        setDobDraft(profile.dob ? profile.dob : "");
         setBioDraft(profile.bio ?? "");
         setPrivacyDraft(profile.privacy || {});
       } catch (e) {
@@ -206,7 +206,7 @@ export default function Profile({ navigation }: any) {
           justifyContent: "space-between",
           gap: 24,
           padding: 24,
-          minHeight: 250,
+          minHeight: 400,
         }}
       >
         {/* Left column */}
@@ -260,20 +260,69 @@ export default function Profile({ navigation }: any) {
                   width: "100%",
                 }}
               />
-              <TextInput
-                value={dobDraft}
-                onChangeText={setDobDraft}
-                placeholder="Date of Birth"
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.base.border,
-                  borderRadius: 6,
-                  padding: 8,
-                  backgroundColor: "white",
-                  marginBottom: 6,
-                  width: "100%",
-                }}
-              />
+{/* Date of Birth */}
+<Text style={{ color: colors.base.text, fontWeight: "500", marginBottom: 4 }}>
+  Date of Birth
+</Text>
+
+{Platform.OS === "web" ? (
+  <View
+    style={{
+      borderWidth: 1,
+      borderColor: colors.base.border,
+      borderRadius: 6,
+      backgroundColor: colors.base.background,
+      height: 44,
+      justifyContent: "center",
+      paddingHorizontal: 8,
+      marginBottom: 6,
+      width: "100%",
+    }}
+  >
+    {/* @ts-ignore */}
+    <input
+      type="date"
+      value={dobDraft ? toYMD(new Date(dobDraft)) : ""}
+      max={toYMD(new Date())}
+      onChange={(e: any) => setDobDraft(e.target.value)}
+      style={{
+        width: "100%",
+        height: "100%",
+        border: "none",
+        outline: "none",
+        backgroundColor: "transparent",
+        fontSize: 15,
+        lineHeight: 1,
+        padding: 0,
+        fontFamily: "Bahnschrift, Arial, sans-serif",
+        color: colors.base.text,
+      }}
+    />
+  </View>
+) : (
+  <>
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={() => setShowDobPicker(true)}
+      style={{
+        borderWidth: 1,
+        borderColor: colors.base.border,
+        borderRadius: 6,
+        backgroundColor: colors.base.background,
+        paddingHorizontal: 12,
+        height: 44,
+        justifyContent: "center",
+        marginBottom: 6,
+        width: "100%",
+      }}
+    >
+      <Text style={{ color: colors.base.text }}>
+        {dobDraft ? toYMD(new Date(dobDraft)) : "Select date"}
+      </Text>
+    </TouchableOpacity>
+  </>
+)}
+
               <TextInput
                 value={bioDraft}
                 onChangeText={setBioDraft}
@@ -291,17 +340,41 @@ export default function Profile({ navigation }: any) {
                   textAlignVertical: "top",
                 }}
               />
-              <Pressable
+            <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
+            <Pressable
                 onPress={handleSaveProfile}
                 style={{
-                  backgroundColor: colors.aqua.normal,
-                  paddingVertical: 10,
-                  paddingHorizontal: 16,
-                  borderRadius: 8,
+                backgroundColor: colors.aqua.dark,
+                paddingVertical: 6,
+                paddingHorizontal: 12,
+                borderRadius: 6,
+                alignItems: "center",
+                justifyContent: "center",
                 }}
-              >
-                <Text style={{ color: colors.aqua.text, fontWeight: "700" }}>Save</Text>
-              </Pressable>
+            >
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+                Save
+                </Text>
+            </Pressable>
+
+            <Pressable
+                onPress={() => setEditing(false)}
+                style={{
+                backgroundColor: colors.peach.dark,
+                paddingVertical: 6,
+                paddingHorizontal: 12,
+                borderRadius: 6,
+                alignItems: "center",
+                justifyContent: "center",
+                }}
+            >
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+                Cancel
+                </Text>
+            </Pressable>
+            </View>
+            </View>
             </>
           ) : (
             <>

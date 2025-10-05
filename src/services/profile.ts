@@ -51,6 +51,19 @@ async function authFetch(url: string, options: RequestInit = {}) {
   });
 }
 
+export async function createProfile(user_id: string, name: string, dob: string) {
+  const res = await fetch(`${API_URL}/profile`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id, name, dob }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Profile creation failed: ${err}`);
+  }
+  return res.json();
+}
+
 // ---------- Profile ----------
 export async function getMyProfile(): Promise<ExtendedUser> {
   const res = await authFetch(`${API_URL}/profile/me`);

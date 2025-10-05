@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { listQuestions, Question } from "../../services/forum";
-import { getDailyTip } from "../../services/tips";
+import ForumCard, { ForumCardItem } from "../../components/ForumCard";
 import colors from "../../styles/colors";
 
 type SortKey = "recent" | "popular";
@@ -24,7 +24,6 @@ export default function Home({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortKey>("popular");
   const [query, setQuery] = useState("");
-  const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
   const [dailyTip, setDailyTip] = useState<string>("");
 
   // Fetch questions from backend
@@ -50,6 +49,7 @@ export default function Home({ navigation }: any) {
   useEffect(() => {
     (async () => {
       try {
+        // @ts-ignore
         const tip = await getDailyTip();
         setDailyTip(tip.text);
       } catch (e) {
@@ -63,27 +63,6 @@ export default function Home({ navigation }: any) {
     if (!rows) return null;
     return rows.slice(0, 2);
   }, [rows]);
-
-  // FIXED: toggleLike only affects the clicked question
-  const toggleLike = (qid: string) => {
-    setRows((prev) =>
-      prev
-        ? prev.map((q) => {
-            if (q.qid !== qid) return q;
-            const currentlyLiked = likedMap[qid] ?? false;
-            return {
-              ...q,
-              likes: currentlyLiked ? q.likes - 1 : q.likes + 1,
-            };
-          })
-        : prev
-    );
-
-    setLikedMap((prev) => ({
-      ...prev,
-      [qid]: !(prev[qid] ?? false),
-    }));
-  };
 
   const goSearch = () => {
     const q = query.trim();
@@ -206,128 +185,14 @@ export default function Home({ navigation }: any) {
               </View>
             )}
 
+            {/* Use ForumCard for each question */}
             {visibleRows?.map((q) => (
-              <View
+              <ForumCard
                 key={q.qid}
-                style={{
-                  backgroundColor: colors.aqua.light,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: colors.base.border,
-                  padding: 16,
-                  marginBottom: 16,
-                }}
-              >
-                {/* Question title */}
-                <Pressable
-                  onPress={() =>
-                    navigation.navigate("QuestionDetail", { qid: q.qid })
-                  }
-                >
-                  <Text
-                    style={{
-                      fontSize: 20,
-                      fontWeight: "800",
-                      marginBottom: 10,
-                      color: colors.base.text,
-                    }}
-                  >
-                    {q.title}
-                  </Text>
-                </Pressable>
-
-                {/* Author row */}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <Pressable
-                    onPress={() =>
-                      navigation.navigate("ProfilePublic", { username: q.author_name })
-                    }
-                  >
-                    <View
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                        backgroundColor: colors.aqua.light,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text>👤</Text>
-                    </View>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() =>
-                      navigation.navigate("ProfilePublic", { username: q.author_name })
-                    }
-                  >
-                    <Text
-                      style={{
-                        fontWeight: "700",
-                        color: colors.aqua.text,
-                        textDecorationLine: "underline",
-                      }}
-                    >
-                      {q.author_name}
-                    </Text>
-                  </Pressable>
-
-                  <View
-                    style={{
-                      backgroundColor: colors.aqua.light,
-                      borderRadius: 999,
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      marginLeft: 6,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "700", color: colors.aqua.text }}>
-                      {q.child_age_label}
-                    </Text>
-                  </View>
-
-                  <View style={{ marginLeft: "auto", flexDirection: "row", gap: 16 }}>
-                    <Text style={{ color: colors.base.text }}>💬 {q.reply_count}</Text>
-                    <Pressable
-                      onPress={() => toggleLike(q.qid)}
-                      style={{ flexDirection: "row", alignItems: "center" }}
-                    >
-                      <Text style={{ fontSize: 16 }}>
-                        {likedMap[q.qid] ? "❤️" : "🤍"}
-                      </Text>
-                      <Text style={{ fontSize: 16, marginLeft: 6 }}>{q.likes}</Text>
-                    </Pressable>
-                  </View>
-                </View>
-
-                {/* Body */}
-                <Text
-                  style={{ marginTop: 10, lineHeight: 20, color: colors.base.text }}
-                >
-                  {q.body}
-                </Text>
-
-                {/* Replies button */}
-                <Pressable
-                  onPress={() =>
-                    // console.log("View all replies for", q.qid) +
-                    navigation.navigate("QuestionDetail", { qid: q.qid })
-                  }
-                  style={{
-                    marginTop: 14,
-                    alignSelf: "flex-start",
-                    backgroundColor: colors.aqua.normal,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Text style={{ color: colors.aqua.text, fontWeight: "800" }}>
-                    View all replies
-                  </Text>
-                </Pressable>
-              </View>
+                item={q as ForumCardItem}
+                onPress={() => navigation.navigate("QuestionDetail", { qid: q.qid })}
+                onReplyPress={() => navigation.navigate("QuestionDetail", { qid: q.qid })}
+              />
             ))}
 
             {/* Daily tip from mock service */}
@@ -406,7 +271,6 @@ export default function Home({ navigation }: any) {
                 }}
               >
                 ACTIVE BREAKROOMS
-                {/* Connect to backend and get the active breakeooms with HTTP endpoints and API calls */}
               </Text>
             </View>
           </View>
