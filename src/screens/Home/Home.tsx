@@ -1,4 +1,3 @@
-// src/screens/Home/Home.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   View,
@@ -12,6 +11,7 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import { listQuestions, Question } from "../../services/forum";
 import ForumCard, { ForumCardItem } from "../../components/ForumCard";
+import { getDailyTip } from "../../services/tips";
 import colors from "../../styles/colors";
 
 type SortKey = "recent" | "popular";
@@ -45,14 +45,14 @@ export default function Home({ navigation }: any) {
     loadQuestions();
   }, [sort]);
 
-  // Mocked backend integration for daily tip
+  // ✅ Fetch daily tip from Flask (or fallback)
   useEffect(() => {
     (async () => {
       try {
-        // @ts-ignore
         const tip = await getDailyTip();
         setDailyTip(tip.text);
       } catch (e) {
+        console.error("Tip fetch failed:", e);
         setDailyTip("");
       }
     })();
@@ -129,10 +129,18 @@ export default function Home({ navigation }: any) {
 
             {/* Header row */}
             <View
-              style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 12,
+              }}
             >
               <Text
-                style={{ fontSize: 24, fontWeight: "800", color: colors.aqua.text }}
+                style={{
+                  fontSize: 24,
+                  fontWeight: "800",
+                  color: colors.aqua.text,
+                }}
               >
                 HOME FEED
               </Text>
@@ -173,7 +181,9 @@ export default function Home({ navigation }: any) {
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ color: colors.aqua.text, fontSize: 22, marginTop: -2 }}>
+                <Text
+                  style={{ color: colors.aqua.text, fontSize: 22, marginTop: -2 }}
+                >
                   ＋
                 </Text>
               </Pressable>
@@ -185,17 +195,21 @@ export default function Home({ navigation }: any) {
               </View>
             )}
 
-            {/* Use ForumCard for each question */}
+            {/* Forum cards */}
             {visibleRows?.map((q) => (
               <ForumCard
                 key={q.qid}
                 item={q as ForumCardItem}
-                onPress={() => navigation.navigate("QuestionDetail", { qid: q.qid })}
-                onReplyPress={() => navigation.navigate("QuestionDetail", { qid: q.qid })}
+                onPress={() =>
+                  navigation.navigate("QuestionDetail", { qid: q.qid })
+                }
+                onReplyPress={() =>
+                  navigation.navigate("QuestionDetail", { qid: q.qid })
+                }
               />
             ))}
 
-            {/* Daily tip from mock service */}
+            {/* ✅ Daily tip card */}
             {dailyTip ? (
               <View
                 style={{
@@ -217,7 +231,11 @@ export default function Home({ navigation }: any) {
                 >
                   <Text style={{ fontSize: 22 }}>💡</Text>
                   <Text
-                    style={{ fontSize: 18, fontWeight: "800", color: colors.peach.text }}
+                    style={{
+                      fontSize: 18,
+                      fontWeight: "800",
+                      color: colors.peach.text,
+                    }}
                   >
                     DAILY TIP
                   </Text>
@@ -246,7 +264,9 @@ export default function Home({ navigation }: any) {
                     borderRadius: 8,
                   }}
                 >
-                  <Text style={{ color: "white", fontWeight: "700" }}>Ask BiBi</Text>
+                  <Text style={{ color: "white", fontWeight: "700" }}>
+                    Ask BiBi
+                  </Text>
                 </Pressable>
               </View>
             ) : null}

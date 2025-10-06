@@ -200,7 +200,7 @@ export default function Forums({ navigation }: any) {
                         </Text>
                       </View>
                       <Text style={{ color: colors.base.text }}>
-                        💬 {q.reply_count}
+                        💬
                       </Text>
                       <Text style={{ color: colors.base.text }}>🤍 {q.likes}</Text>
                     </View>
