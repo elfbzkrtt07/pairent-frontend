@@ -400,8 +400,8 @@ export default function Timers({ navigation }: any) {
               </Text>
               <Pressable
                 onPress={() =>
-                  navigation?.navigate?.("Bibi", {
-                    preset: "Hi Bibi, can you give me advice about sleep and food times for my children?",
+                  navigation?.navigate?.("BiBi", {
+                    preset: "Hi BiBi, can you give me advice about sleep and food times for my children?",
                   })
                 }
                 style={{
