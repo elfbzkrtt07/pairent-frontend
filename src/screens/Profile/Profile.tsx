@@ -17,8 +17,9 @@ import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/dat
 import { useAuth } from "../../context/AuthContext";
 import { updatePassword } from "aws-amplify/auth";
 import colors from "../../styles/colors";
-import { ExtendedUser, getMyProfile, updateMyProfile, addChild } from "../../services/profile";
+import { ExtendedUser, getMyProfile, updateMyProfile, addChild, listChildren, updateChild, deleteChild } from "../../services/profile";
 import { listMyQuestions } from "../../services/forum";
+
 
 type Question = { qid: string; title: string; reply_count: number; likes: number };
 type PrivacyLevel = "public" | "private" | "friends";
@@ -76,6 +77,7 @@ export default function Profile({ navigation }: any) {
   const [childDob, setChildDob] = useState(new Date(2020, 0, 1));
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [savingChild, setSavingChild] = useState(false);
+  const [editingChildId, setEditingChildId] = useState<string | null>(null);
 
   const childDobStr = toYMD(childDob);
 
@@ -107,6 +109,21 @@ export default function Profile({ navigation }: any) {
       }
     })();
   }, [user]);
+
+// 🔹 Fetch children separately
+useEffect(() => {
+  if (!user) return;
+  (async () => {
+    try {
+      const children = await listChildren();
+      setExtended((prev) =>
+        prev ? { ...prev, children } : { id: user.sub, children }
+      );
+    } catch (e) {
+      console.error("Failed to load children:", e);
+    }
+  })();
+}, [user]);
 
   // Fetch questions
   useEffect(() => {
@@ -142,22 +159,47 @@ export default function Profile({ navigation }: any) {
   };
 
   const handleSaveChild = async () => {
-    try {
-      setSavingChild(true);
+  try {
+    setSavingChild(true);
+
+    if (editingChildId) {
+      // 🟢 Update existing child
+      const updated = await updateChild(editingChildId, {
+        name: childName,
+        dob: childDobStr,
+      });
+
+      setExtended((prev) =>
+        prev
+          ? {
+              ...prev,
+              children: prev.children?.map((c) =>
+                c.child_id === editingChildId ? updated : c
+              ),
+            }
+          : prev
+      );
+    } else {
+      // 🟢 Add new child
       const newChild = await addChild({ name: childName, dob: childDobStr });
       setExtended((prev) =>
         prev ? { ...prev, children: [...(prev.children || []), newChild] } : prev
       );
-      setChildName("");
-      setChildDob(new Date(2020, 0, 1));
-      setAddingChild(false);
-    } catch (e) {
-      console.error("Failed to add child:", e);
-      alert("Failed to add child");
-    } finally {
-      setSavingChild(false);
     }
-  };
+
+    // Reset form
+    setChildName("");
+    setChildDob(new Date(2020, 0, 1));
+    setEditingChildId(null);
+    setAddingChild(false);
+  } catch (e) {
+    console.error("Failed to save child:", e);
+    alert("Failed to save child");
+  } finally {
+    setSavingChild(false);
+  }
+};
+
 
   const handleChangePassword = async () => {
     try {
@@ -665,42 +707,100 @@ export default function Profile({ navigation }: any) {
           )}
 
           {extended?.children?.length ? (
-            extended.children.map((c, i) => (
-              <View
-                key={i}
+        extended.children.map((c, i) => (
+        <View
+            key={i}
+            style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 10,
+            backgroundColor: colors.aqua.light,
+            borderRadius: 12,
+            padding: 10,
+            borderWidth: 1,
+            borderColor: colors.base.border,
+            justifyContent: "space-between",
+            }}
+        >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginBottom: 10,
-                  backgroundColor: colors.aqua.light,
-                  borderRadius: 12,
-                  padding: 10,
-                  borderWidth: 1,
-                  borderColor: colors.base.border,
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: colors.aqua.normal,
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 12,
                 }}
-              >
-                <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: colors.aqua.normal,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginRight: 12,
-                  }}
-                >
-                  <Text style={{ fontSize: 20, fontWeight: "700", color: colors.aqua.text }}>
-                    {c.name.slice(0, 1).toUpperCase()}
-                  </Text>
-                </View>
-                <View>
-                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.base.text }}>
-                    {c.name}
-                  </Text>
-                </View>
-              </View>
-            ))
+            >
+                <Text style={{ fontSize: 20, fontWeight: "700", color: colors.aqua.text }}>
+                {c.name.slice(0, 1).toUpperCase()}
+                </Text>
+            </View>
+            <View>
+                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.base.text }}>
+                {c.name}
+                </Text>
+                <Text style={{ color: colors.base.muted, fontSize: 14 }}>
+                DOB: {c.dob ?? "Unknown"}
+                </Text>
+            </View>
+            </View>
+
+            {/* ✏️ Edit Button */}
+            <View style={{ flexDirection: "row", gap: 6 }}>
+            {/* ✏️ Edit Button */}
+            <Pressable
+                onPress={() => {
+                setChildName(c.name);
+                setChildDob(c.dob ? new Date(c.dob) : new Date(2020, 0, 1));
+                setEditingChildId(c.child_id);
+                setAddingChild(true);
+                }}
+                style={{
+                backgroundColor: colors.aqua.dark,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 6,
+                }}
+            >
+                <Text style={{ color: "white", fontWeight: "700", fontSize: 13 }}>Edit</Text>
+            </Pressable>
+
+            {/* Delete Button */}
+            <Pressable
+                onPress={async () => {
+                if (!confirm(`Delete ${c.name}?`)) return;
+                try {
+                    await deleteChild(c.child_id);
+                    setExtended((prev) =>
+                    prev
+                        ? {
+                            ...prev,
+                            children: prev.children?.filter((x) => x.child_id !== c.child_id),
+                        }
+                        : prev
+                    );
+                } catch (err) {
+                    console.error("Failed to delete child:", err);
+                    alert("Could not delete child");
+                }
+                }}
+                style={{
+                backgroundColor: colors.peach.dark,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 6,
+                }}
+            >
+                <Text style={{ color: "white", fontWeight: "700", fontSize: 13 }}>Delete</Text>
+            </Pressable>
+            </View>
+
+        </View>
+        ))
+
           ) : (
             <Text style={{ color: colors.base.muted, fontSize: 14 }}>No children</Text>
           )}

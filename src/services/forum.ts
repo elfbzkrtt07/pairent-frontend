@@ -319,7 +319,7 @@ export async function listSavedQuestions(): Promise<{ items: any[] }> {
   return res.json();
 }
 
-export async function deleteQuestion(qid: string): Promise<{ message: string }> {
+export async function deleteQuestion(qid: string): Promise<void> {
   const res = await fetch(`${API_URL}/questions/${qid}`, {
     method: "DELETE",
     headers: await authHeaders(),
@@ -329,8 +329,6 @@ export async function deleteQuestion(qid: string): Promise<{ message: string }> 
     const errText = await res.text();
     throw new Error(`Failed to delete question: ${res.status} ${errText}`);
   }
-
-  return res.json();
 }
 
 export async function listQuestionsByUser(

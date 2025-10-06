@@ -1,22 +1,23 @@
 // src/services/profile.ts
-import { fetchAuthSession } from "aws-amplify/auth";
+import { fetchAuthSession, signUp, fetchUserAttributes } from "aws-amplify/auth";
 
 // ---------- Types ----------
 export type Child = {
-  id: string;
+  child_id: string;
   name: string;
   dob?: string;
+  user_id?: string;
+  privacy?: Record<string, PrivacyLevel>;
+  milestones?: Array<{ id: number; reached: boolean }>;
 };
 
 export type GrowthRecord = {
-  id?: string;
   date: string;
   height: number;
   weight: number;
 };
 
 export type VaccineRecord = {
-  id?: string;
   name: string;
   date: string;
   status: "done" | "pending" | "skipped";
@@ -35,6 +36,13 @@ export type ExtendedUser = {
   dob?: string;
 };
 
+export type Milestone = {
+  id: string;       // comes back as string from backend merge
+  name: string;
+  done: boolean;
+  typical?: string; // backend may not provide this field yet
+};
+
 const API_URL = "http://127.0.0.1:5000";
 
 // ---------- Helpers ----------
@@ -51,6 +59,7 @@ async function authFetch(url: string, options: RequestInit = {}) {
   });
 }
 
+// ---------- Profile ----------
 export async function createProfile(user_id: string, name: string, dob: string) {
   const res = await fetch(`${API_URL}/profile`, {
     method: "POST",
@@ -64,7 +73,6 @@ export async function createProfile(user_id: string, name: string, dob: string) 
   return res.json();
 }
 
-// ---------- Profile ----------
 export async function getMyProfile(): Promise<ExtendedUser> {
   const res = await authFetch(`${API_URL}/profile/me`);
   if (!res.ok) throw new Error("Failed to fetch profile");
@@ -86,7 +94,6 @@ export async function getUserProfile(userId: string): Promise<ExtendedUser> {
   return res.json();
 }
 
-// ---------- Public User ----------
 export async function getPublicUser(userId: string) {
   const res = await authFetch(`${API_URL}/profile/${userId}`);
   if (!res.ok) throw new Error("Failed to fetch public user");
@@ -100,14 +107,14 @@ export async function addChild(payload: { name: string; dob: string }): Promise<
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Failed to add child");
-  return res.json(); // backend returns the created child
+  return res.json();
 }
 
 export async function listChildren(): Promise<Child[]> {
-  const res = await authFetch(`${API_URL}/profile/me`);
+  const res = await authFetch(`${API_URL}/profile/me/children`);
   if (!res.ok) throw new Error("Failed to list children");
-  const me = await res.json();
-  return me.children ?? []; // always return an array
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
 }
 
 export async function updateChild(childId: string, payload: Partial<Child>): Promise<Child> {
@@ -127,20 +134,44 @@ export async function deleteChild(childId: string): Promise<void> {
 }
 
 // ---------- Milestones ----------
-export type Milestone = { id: string; name: string; typical: string; done: boolean };
-
-export async function listMilestones(childId: string): Promise<{ items: Milestone[] }> {
+export async function listMilestones(childId: string): Promise<Milestone[]> {
   const res = await authFetch(`${API_URL}/milestones/${childId}`);
   if (!res.ok) throw new Error("Failed to fetch milestones");
-  return res.json();
+
+  // Backend returns an array, not { items }. Make it robust to either shape.
+  const data = await res.json();
+  if (Array.isArray(data)) return data as Milestone[];
+  if (Array.isArray(data?.items)) return data.items as Milestone[];
+  return [];
 }
 
+/**
+ * Toggle milestone by:
+ * 1) fetching current merged milestones (with names),
+ * 2) building the raw `{id:number, reached:boolean}` array expected in the Child item,
+ * 3) PUT /profile/me/children/:childId with `milestones` update,
+ * 4) re-fetch merged list for the UI.
+ */
 export async function toggleMilestone(childId: string, milestoneId: string) {
-  const res = await authFetch(`${API_URL}/milestones/${childId}/${milestoneId}`, {
-    method: "PATCH",
-    body: JSON.stringify({ toggle: true }),
-  });
-  if (!res.ok) throw new Error("Failed to toggle milestone");
+  // get merged milestones
+  const merged = await listMilestones(childId);
+
+  // compute updated
+  const updated = merged.map((m) =>
+    m.id === milestoneId ? { ...m, done: !m.done } : m
+  );
+
+  // convert to raw shape expected by backend child record
+  const rawMilestones = updated.map((m) => ({
+    id: Number(m.id),       // backend uses numeric ids
+    reached: Boolean(m.done),
+  }));
+
+  // PUT the child update
+  await updateChild(childId, { milestones: rawMilestones });
+
+  // return fresh merged milestones
+  return listMilestones(childId);
 }
 
 // ---------- Growth ----------
@@ -153,10 +184,11 @@ export async function addGrowth(childId: string, payload: GrowthRecord) {
   return res.json();
 }
 
-export async function listGrowth(childId: string): Promise<{ items: GrowthRecord[] }> {
+export async function listGrowth(childId: string): Promise<GrowthRecord[]> {
   const res = await authFetch(`${API_URL}/profile/me/children/${childId}/growth`);
   if (!res.ok) throw new Error("Failed to list growth records");
-  return res.json();
+  const data = await res.json();
+  return Array.isArray(data) ? (data as GrowthRecord[]) : Array.isArray(data?.items) ? data.items : [];
 }
 
 // ---------- Vaccines ----------
@@ -169,39 +201,30 @@ export async function addVaccine(childId: string, payload: VaccineRecord) {
   return res.json();
 }
 
-export async function listVaccines(childId: string): Promise<{ items: VaccineRecord[] }> {
+export async function listVaccines(childId: string): Promise<VaccineRecord[]> {
   const res = await authFetch(`${API_URL}/profile/me/children/${childId}/vaccine`);
   if (!res.ok) throw new Error("Failed to list vaccine records");
-  return res.json();
+  const data = await res.json();
+  return Array.isArray(data) ? (data as VaccineRecord[]) : Array.isArray(data?.items) ? data.items : [];
 }
 
-
-// ---------- Friends ----------
-export async function sendFriendRequest(userId: string) {
-  const res = await authFetch(`${API_URL}/friends/request/${userId}`, {
-    method: "POST",
+// ---------- Registration ----------
+export async function registerUser(email: string, password: string, name: string, dob: string) {
+  await signUp({
+    username: email.trim(),
+    password,
+    options: {
+      userAttributes: {
+        name: name.trim(),
+        birthdate: dob,
+        email: email.trim(),
+      },
+    },
   });
-  if (!res.ok) throw new Error("Failed to send friend request");
-  return res.json();
-}
 
-export async function acceptFriendRequest(userId: string) {
-  const res = await authFetch(`${API_URL}/friends/accept/${userId}`, {
-    method: "POST",
-  });
-  if (!res.ok) throw new Error("Failed to accept friend request");
-  return res.json();
-}
+  const attrs = await fetchUserAttributes();
+  const userSub = attrs.sub;
 
-export async function listFriendRequests() {
-  const res = await authFetch(`${API_URL}/friends/requests`);
-  if (!res.ok) throw new Error("Failed to list friend requests");
-  return res.json();
-}
-
-export async function removeFriend(userId: string) {
-  const res = await authFetch(`${API_URL}/friends/${userId}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Failed to remove friend");
+  const profile = await createProfile(userSub, name.trim(), dob);
+  return { userSub, profile };
 }
