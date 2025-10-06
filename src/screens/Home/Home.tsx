@@ -7,14 +7,21 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   TextInput,
+  Linking,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { listQuestions, Question } from "../../services/forum";
+import { listBreakrooms } from "../../services/breakrooms";
 import ForumCard, { ForumCardItem } from "../../components/ForumCard";
-import { getDailyTip } from "../../services/tips";
 import colors from "../../styles/colors";
 
 type SortKey = "recent" | "popular";
+
+type Breakroom = {
+  id: string;
+  name: string;
+  url: string;
+};
 
 export default function Home({ navigation }: any) {
   const { width } = useWindowDimensions();
@@ -26,7 +33,10 @@ export default function Home({ navigation }: any) {
   const [query, setQuery] = useState("");
   const [dailyTip, setDailyTip] = useState<string>("");
 
-  // Fetch questions from backend
+  const [breakrooms, setBreakrooms] = useState<Breakroom[]>([]);
+  const [breakroomsLoading, setBreakroomsLoading] = useState(true);
+
+  // --- Fetch questions ---
   useEffect(() => {
     const loadQuestions = async () => {
       try {
@@ -41,16 +51,15 @@ export default function Home({ navigation }: any) {
         setLoading(false);
       }
     };
-
     loadQuestions();
   }, [sort]);
 
-  // ✅ Fetch daily tip from Flask (or fallback)
+  // --- Fetch daily tip ---
   useEffect(() => {
     (async () => {
       try {
-        const tip = await getDailyTip();
-        setDailyTip(tip.text);
+        const tip = "Remember to take breaks and practice self-care!";
+        setDailyTip(tip);
       } catch (e) {
         console.error("Tip fetch failed:", e);
         setDailyTip("");
@@ -58,7 +67,23 @@ export default function Home({ navigation }: any) {
     })();
   }, []);
 
-  // Only show 2 items on home preview
+  // --- Fetch breakrooms ---
+  useEffect(() => {
+    const loadRooms = async () => {
+      try {
+        setBreakroomsLoading(true);
+        const data = await listBreakrooms();
+        setBreakrooms(data);
+      } catch (e) {
+        console.error("Failed to load breakrooms:", e);
+        setBreakrooms([]);
+      } finally {
+        setBreakroomsLoading(false);
+      }
+    };
+    loadRooms();
+  }, []);
+
   const visibleRows = useMemo(() => {
     if (!rows) return null;
     return rows.slice(0, 2);
@@ -189,27 +214,37 @@ export default function Home({ navigation }: any) {
               </Pressable>
             </View>
 
-            {loading && (
+            {loading ? (
               <View style={{ paddingVertical: 24 }}>
                 <ActivityIndicator size="large" />
               </View>
+            ) : (
+              visibleRows?.map((q) => (
+                <ForumCard
+                  key={q.qid}
+                  item={{
+                    qid: q.qid,
+                    title: q.title,
+                    child_age_label: q.age,
+                    likes: q.likes,
+                    author_id: q.author_id,
+                    author_name: q.author_name,
+                    // add any other ForumCardItem fields here if needed
+                  }}
+                  onPress={() =>
+                    navigation.navigate("QuestionDetail", { qid: q.qid })
+                  }
+                  onReplyPress={() =>
+                    navigation.navigate("QuestionDetail", { qid: q.qid })
+                  }
+                  onAuthorPress={(userId) =>
+                    navigation.navigate("ProfilePublic", { userId })
+                  }
+                />
+              ))
             )}
 
-            {/* Forum cards */}
-            {visibleRows?.map((q) => (
-              <ForumCard
-                key={q.qid}
-                item={q as ForumCardItem}
-                onPress={() =>
-                  navigation.navigate("QuestionDetail", { qid: q.qid })
-                }
-                onReplyPress={() =>
-                  navigation.navigate("QuestionDetail", { qid: q.qid })
-                }
-              />
-            ))}
-
-            {/* ✅ Daily tip card */}
+            {/* Daily tip card */}
             {dailyTip ? (
               <View
                 style={{
@@ -272,7 +307,7 @@ export default function Home({ navigation }: any) {
             ) : null}
           </View>
 
-          {/* RIGHT column */}
+          {/* RIGHT column - ACTIVE BREAKROOMS */}
           <View style={{ width: isWide ? 280 : "100%", gap: 12 }}>
             <View
               style={{
@@ -288,10 +323,76 @@ export default function Home({ navigation }: any) {
                   fontSize: 16,
                   fontWeight: "800",
                   color: colors.peach.text,
+                  marginBottom: 8,
                 }}
               >
                 ACTIVE BREAKROOMS
               </Text>
+
+              {breakroomsLoading ? (
+                <ActivityIndicator size="small" />
+              ) : breakrooms.length === 0 ? (
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: colors.base.background,
+                    marginTop: 4,
+                  }}
+                >
+                  No active breakrooms.
+                </Text>
+              ) : (
+                breakrooms.map((room) => (
+                  <View
+                    key={room.id}
+                    style={{
+                      backgroundColor: "#fff",
+                      borderRadius: 8,
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      borderWidth: 1,
+                      borderColor: colors.base.border,
+                      marginBottom: 8,
+                      flexDirection: "row", // horizontal layout
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontWeight: "700",
+                        fontSize: 15,
+                        color: colors.peach.text,
+                        flexShrink: 1,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {room.name}
+                    </Text>
+
+                    {/* ✅ Join button aligned right */}
+                    <Pressable
+                      onPress={() => {
+                        if (room.url?.startsWith("http")) {
+                          Linking.openURL(room.url);
+                        } else {
+                          console.warn("Invalid or missing room URL");
+                        }
+                      }}
+                      style={{
+                        backgroundColor: colors.peach.dark,
+                        paddingHorizontal: 14,
+                        paddingVertical: 6,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Text style={{ color: "white", fontWeight: "700" }}>
+                        Join
+                      </Text>
+                    </Pressable>
+                  </View>
+                ))
+              )}
             </View>
           </View>
         </View>

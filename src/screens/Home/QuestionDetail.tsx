@@ -63,7 +63,7 @@ export default function QuestionDetailScreen({ route }: any) {
 
   const ROOT = "__root__";
 
-  // 🔄 Load question + replies + like states
+  // Load question + replies + like states
   useEffect(() => {
     const load = async () => {
       try {
@@ -75,6 +75,7 @@ export default function QuestionDetailScreen({ route }: any) {
           getSaved(qid),
         ]);
 
+        // @ts-ignore
         setQ(qData);
 
         // group replies for nested display
@@ -116,7 +117,7 @@ export default function QuestionDetailScreen({ route }: any) {
 
   const topLevelReplies = replyMap[ROOT] ?? [];
 
-  // 💾 Save toggle
+  // Save toggle
   const onToggleSaved = useCallback(async () => {
     const next = !saved;
     setSaved(next);
@@ -128,7 +129,7 @@ export default function QuestionDetailScreen({ route }: any) {
     }
   }, [saved, qid]);
 
-  // ❤️ Question like toggle
+  // Question like toggle
   const onToggleQuestionLike = useCallback(async () => {
     const prev = likes[qid] ?? false;
     const next = !prev;
@@ -174,7 +175,7 @@ export default function QuestionDetailScreen({ route }: any) {
     [likes, qid]
   );
 
-  // ✏️ Submit reply
+  // Submit reply
   const onSubmitReply = useCallback(async () => {
     const text = replyText.trim();
     if (!text || !q) return;
@@ -182,7 +183,7 @@ export default function QuestionDetailScreen({ route }: any) {
     try {
       const newReply = await createReply({
         qid,
-        parent_id: replyTo,
+        parent_id: replyTo || qid, // <-- use replyTo if replying to a reply
         body: text,
       });
 
@@ -208,7 +209,7 @@ export default function QuestionDetailScreen({ route }: any) {
     }
   }, [replyText, q, replyTo, qid]);
 
-  // 🗑️ Delete reply
+  // Delete reply
   const onDeleteReply = useCallback(async (rid: string) => {
     let confirmed = true;
     if (Platform.OS === "web") {
@@ -238,7 +239,7 @@ export default function QuestionDetailScreen({ route }: any) {
     }
   }, [qid]);
 
-  // 🔁 Recursive reply renderer
+  // Recursive reply renderer
   const renderReplyNode = useCallback(
     (r: Reply, level: number) => {
       const children = replyMap[r.rid] ?? [];
@@ -317,7 +318,7 @@ export default function QuestionDetailScreen({ route }: any) {
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16 }} style={{ backgroundColor: colors.base.background }}>
-      {/* 🟢 Question Section */}
+      {/* Question Section */}
       <View
         style={{
           backgroundColor: colors.aqua.light,
@@ -362,7 +363,7 @@ export default function QuestionDetailScreen({ route }: any) {
         <Text style={{ lineHeight: 22, color: colors.base.text }}>{q.body}</Text>
       </View>
 
-      {/* 🟣 Replies */}
+      {/* Replies */}
       <View style={{ marginTop: 16 }}>
         <Text style={{ fontSize: 18, fontWeight: "800", marginBottom: 8, color: colors.base.text }}>
           Replies
@@ -370,7 +371,7 @@ export default function QuestionDetailScreen({ route }: any) {
         {topLevelReplies.map((r) => renderReplyNode(r, 0))}
       </View>
 
-      {/* 🟠 Reply input */}
+      {/* Reply input */}
       <View style={{ marginTop: 24 }}>
         <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 8, color: colors.base.text }}>
           {replyingToObj

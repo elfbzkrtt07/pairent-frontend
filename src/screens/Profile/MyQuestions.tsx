@@ -28,24 +28,18 @@ export default function MyQuestions({ navigation }: any) {
     loadMine();
   }, [loadMine]);
 
-  const handleDelete = (qid: string) => {
-    Alert.alert("Delete Question", "Are you sure you want to delete this question?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteQuestion(qid);
-            setItems((prev) => prev.filter((item) => item.qid !== qid));
-          } catch (err) {
-            console.error("Error deleting question:", err);
-            Alert.alert("Error", "Failed to delete question. Please try again.");
-          }
-        },
-      },
-    ]);
-  };
+  const handleDelete = async (qid: string) => {
+     console.log("1. Attempting to delete question with qid:", qid);
+    try {
+      console.log("2. Deleting question:", qid);
+      await deleteQuestion(qid);
+      setItems((prev) => prev.filter((item) => item.qid !== qid));
+    } catch (err) {
+        console.log("3. Error deleting question:", err);
+      console.error("Error deleting question:", err);
+    }
+};
+
 
   if (loading) {
     return (
@@ -93,9 +87,6 @@ export default function MyQuestions({ navigation }: any) {
               onReplyPress={() => navigation.navigate("QuestionDetail", { qid: item.qid })}
             />
             <View style={{ flexDirection: "row", gap: 12, marginTop: 6 }}>
-              <Pressable onPress={() => navigation.navigate("EditQuestion", { qid: item.qid })}>
-                <Text style={{ color: colors.aqua.text, fontWeight: "600" }}>Edit</Text>
-              </Pressable>
               <Pressable onPress={() => handleDelete(item.qid)}>
                 <Text style={{ color: colors.peach.dark, fontWeight: "600" }}>Delete</Text>
               </Pressable>

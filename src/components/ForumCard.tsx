@@ -1,4 +1,3 @@
-// src/components/ForumCard.tsx
 import { useEffect, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import colors from "../styles/colors";
@@ -7,10 +6,11 @@ import { likeQuestion, unlikeQuestion, getLikeStatus } from "../services/forum";
 export type ForumCardItem = {
   qid: string;
   title: string;
+  author_id: string;
   author_name: string;
-  child_age_label: string;   // string label, e.g. "3 yrs"
+  child_age_label: string;
   likes: number;
-  created_at?: string; // YYYYMMDDHHMMSS
+  created_at?: string;
 };
 
 export default function ForumCard({
@@ -22,13 +22,13 @@ export default function ForumCard({
   item: ForumCardItem;
   onPress: () => void;
   onReplyPress?: () => void;
-  onAuthorPress?: (username: string) => void;
+  onAuthorPress?: (userId: string) => void; //now expects userId
 }) {
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(item.likes);
   const [loading, setLoading] = useState(false);
 
-  // fetch initial like status
+  // --- Fetch like status ---
   useEffect(() => {
     (async () => {
       try {
@@ -47,12 +47,8 @@ export default function ForumCard({
       const next = !liked;
       setLiked(next);
       setLikes((prev) => prev + (next ? 1 : -1));
-
-      if (next) {
-        await likeQuestion(item.qid);
-      } else {
-        await unlikeQuestion(item.qid);
-      }
+      if (next) await likeQuestion(item.qid);
+      else await unlikeQuestion(item.qid);
     } catch (err) {
       console.error("Failed to toggle like:", err);
       setLiked((prev) => !prev);
@@ -73,7 +69,7 @@ export default function ForumCard({
         borderColor: colors.base.border,
       }}
     >
-      {/* Title */}
+      {/* --- Title --- */}
       <Pressable onPress={onPress}>
         <Text
           style={{
@@ -87,6 +83,7 @@ export default function ForumCard({
         </Text>
       </Pressable>
 
+      {/* --- Info Row --- */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         {/* Avatar */}
         <View
@@ -103,8 +100,8 @@ export default function ForumCard({
           <Text style={{ fontSize: 18, color: colors.aqua.text }}>👤</Text>
         </View>
 
-        {/* Author name as button */}
-        <Pressable onPress={() => onAuthorPress?.(item.author_name)}>
+        {/* Author Name — links to public profile */}
+        <Pressable onPress={() => onAuthorPress?.(item.author_id)}>
           <Text
             style={{
               fontSize: 16,
@@ -136,9 +133,9 @@ export default function ForumCard({
 
         <View style={{ flex: 1 }} />
 
-        {/* Metrics */}
+        {/* --- Metrics --- */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
-          {/* Reply button */}
+          {/* Replies */}
           <Pressable
             onPress={onReplyPress}
             style={{
@@ -152,7 +149,7 @@ export default function ForumCard({
             <Text style={{ fontSize: 20, color: colors.aqua.text }}>💬</Text>
           </Pressable>
 
-          {/* Like button */}
+          {/* Likes */}
           <Pressable
             onPress={handleLike}
             disabled={loading}
@@ -165,12 +162,8 @@ export default function ForumCard({
               opacity: loading ? 0.6 : 1,
             }}
           >
-            <Text style={{ fontSize: 20 }}>
-              {liked ? "❤️" : "🤍"}
-            </Text>
-            <Text
-              style={{ fontSize: 16, marginLeft: 4, color: colors.base.text }}
-            >
+            <Text style={{ fontSize: 20 }}>{liked ? "❤️" : "🤍"}</Text>
+            <Text style={{ fontSize: 16, marginLeft: 4, color: colors.base.text }}>
               {likes}
             </Text>
           </Pressable>
