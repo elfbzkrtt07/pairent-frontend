@@ -1,73 +1,60 @@
-import React from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import React, { useState, useCallback } from "react";
+import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import colors from "../../styles/colors";
+import { listBreakrooms } from "../../services/breakrooms";
 
-const mockRooms = [
-  { 
-    id: "1", 
-    name: "test_room_1", 
-    url: "https://pairent.daily.co/test_room_1",
-    description: "Casual parenting chat" 
-  },
-  { 
-    id: "2", 
-    name: "test_room_2", 
-    url: "https://pairent.daily.co/test_room_2",
-    description: "Newborn care tips" 
-  },
-  { 
-    id: "3", 
-    name: "test_room_3", 
-    url: "https://pairent.daily.co/test_room_3",
-    description: "Work-life balance" 
-  },
-  { 
-    id: "4", 
-    name: "test_room_4", 
-    url: "https://pairent.daily.co/test_room_4",
-    description: "Health & nutrition" 
-  },
-  { 
-    id: "5", 
-    name: "test_room_5", 
-    url: "https://pairent.daily.co/test_room_5",
-    description: "Toddlers & tantrums" 
-  },
-];
+type Room = {
+  id: string;
+  name: string;
+  url: string;
+};
 
 export default function Breakrooms() {
   const navigation = useNavigation();
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadRooms = async () => {
+    try {
+      setLoading(true);
+      const data = await listBreakrooms();
+      setRooms(data);
+    } catch (err) {
+      console.error("Error loading rooms", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadRooms();
+    }, [])
+  );
 
   const joinRoom = (url: string) => {
     window.open(url, "_blank");
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, backgroundColor: colors.base.background }}>
+    <View style={{ flex: 1, padding: 12, backgroundColor: colors.base.background }}>
       {/* Header */}
       <View
         style={{
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 16,
+          marginBottom: 10,
         }}
       >
-        <Text
-          style={{
-            fontSize: 24,
-            fontWeight: "800",
-            color: colors.peach.text,
-          }}
-        >
+        <Text style={{ fontSize: 22, fontWeight: "800", color: colors.peach.text }}>
           BREAKROOMS
         </Text>
 
         <Pressable
           onPress={() => navigation.navigate("CreateBreakroom" as never)}
           style={{
-            marginLeft: "auto",
             width: 36,
             height: 36,
             borderRadius: 18,
@@ -76,99 +63,83 @@ export default function Breakrooms() {
             justifyContent: "center",
           }}
         >
-          <Text
-            style={{
-              color: colors.base.background,
-              fontSize: 22,
-              marginTop: -2,
-              fontWeight: "800",
-            }}
-          >
-            ＋
-          </Text>
+          <Text style={{ color: "white", fontSize: 22, fontWeight: "800" }}>＋</Text>
         </Pressable>
       </View>
 
-      {/* Grid */}
-      <ScrollView
-        contentContainerStyle={{
-          flexDirection: "row",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-        }}
-      >
-        {mockRooms.map((item) => (
-          <View
-            key={item.id}
-            style={{
-              width: "22%", // 4 per row
-              aspectRatio: 1.2,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: colors.base.border,
-              backgroundColor: colors.peach.light,
-              justifyContent: "center",
-              alignItems: "center",
-              marginBottom: 16,
-              shadowColor: "#000",
-              shadowOpacity: 0.1,
-              shadowOffset: { width: 0, height: 2 },
-              shadowRadius: 4,
-              elevation: 2,
-              padding: 12,
-            }}
-          >
-            {/* Room name */}
-            <Text
+      {loading ? (
+        <ActivityIndicator size="large" color={colors.peach.dark} style={{ marginTop: 40 }} />
+      ) : (
+        <ScrollView
+          contentContainerStyle={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            justifyContent: rooms.length < 6 ? "flex-start" : "space-between", 
+            paddingHorizontal: 10,
+          }}
+        >
+          {rooms.map((item) => (
+            <View
+              key={item.id}
               style={{
-                fontSize: 18,
-                fontWeight: "800",
-                marginBottom: 8,
-                textAlign: "center",
-                color: colors.peach.text,
-              }}
-            >
-              {item.name}
-            </Text>
-
-            {/* Room description */}
-            <Text
-              style={{
-                fontSize: 14,
-                lineHeight: 20,
-                color: colors.peach.subtext,
+                width: "15%", // about 6 per row
+                aspectRatio: 0.9,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: colors.base.border,
+                backgroundColor: colors.peach.light,
+                justifyContent: "center",
+                alignItems: "center",
                 marginBottom: 12,
-                textAlign: "center",
-                fontWeight: "500",
-              }}
-              numberOfLines={2}
-            >
-              {item.description}
-            </Text>
-
-            {/* Join button */}
-            <Pressable
-              onPress={() => joinRoom(item.url)}
-              style={{
-                backgroundColor: colors.peach.dark,
-                paddingVertical: 10,
-                paddingHorizontal: 18,
-                borderRadius: 8,
+                marginHorizontal: 5,
+                paddingVertical: 8,
+                shadowColor: "#000",
+                shadowOpacity: 0.05,
+                shadowOffset: { width: 0, height: 2 },
+                shadowRadius: 3,
+                elevation: 2,
               }}
             >
+              {/* Room name */}
               <Text
                 style={{
-                  color: "white",
+                  fontSize: 13,
                   fontWeight: "800",
-                  fontSize: 14,
+                  marginBottom: 8,
+                  textAlign: "center",
+                  color: colors.peach.text,
+                }}
+                numberOfLines={1}
+              >
+                {item.name}
+              </Text>
+
+              {/* JOIN button */}
+              <Pressable
+                onPress={() => joinRoom(item.url)}
+                style={{
+                  backgroundColor: colors.peach.dark,
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                  borderRadius: 6,
+                  alignItems: "center",
+                  width: "80%",
                 }}
               >
-                JOIN
-              </Text>
-            </Pressable>
-          </View>
-        ))}
-      </ScrollView>
+                <Text
+                  style={{
+                    color: "white",
+                    fontWeight: "700",
+                    fontSize: 10,
+                  }}
+                >
+                  JOIN
+                </Text>
+              </Pressable>
+            </View>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 }
